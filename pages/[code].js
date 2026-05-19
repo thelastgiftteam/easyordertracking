@@ -43,76 +43,89 @@ function LiveDot() {
   );
 }
 
-// ─── Delivery Pipeline ────────────────────────────────────────────
+// ─── Pipeline ────────────────────────────────────────────────────
+// 3 steps only. CSM never needs to touch anything except Transit→Delivered.
 const PIPELINE = [
-  { icon: '📋', label: 'Order Created',          short: 'Created'   },
-  { icon: '📦', label: 'Shipped',                short: 'Shipped'   },
-  { icon: '🏪', label: 'Reached Delivery Centre',short: 'At Centre' },
-  { icon: '🚚', label: 'Out for Delivery',        short: 'Delivery'  },
-  { icon: '✅', label: 'Delivered',               short: 'Delivered' },
+  { short: 'Order Created', icon: '📋' },
+  { short: 'On the Way',    icon: '🚚' },
+  { short: 'Delivered',     icon: '✅' },
 ];
 
-// Maps sheet Delivery Status value → step index
-function getStep(status, hasTracking) {
-  if (!hasTracking)                              return 0;
-  if (status === 'Delivered')                    return 4;
-  if (status === 'Out for Delivery')             return 3;
-  if (status === 'Reached Delivery Centre')      return 2;
-  return 1; // Transit / default
+// step 0 = Order Created (row added, no tracking yet — visually always done)
+// step 1 = On the Way    (Transit — default status set by sheet onEdit)
+// step 2 = Delivered     (CSM changes Transit → Delivered, that's it)
+function getStep(status) {
+  if (status === 'Delivered') return 2;
+  return 1; // Transit or anything else = On the Way
 }
 
-// ─── StatusStrip (WTFrame-style) ──────────────────────────────────
-function StatusStrip({ status, hasTracking }) {
-  const current    = getStep(status, hasTracking);
-  const isAllDone  = current >= PIPELINE.length - 1;
+const STATUS_DISPLAY = {
+  'Transit':   { label: 'On the Way', icon: '🚚', color: '#60A5FA' },
+  'Delivered': { label: 'Delivered',  icon: '✅', color: '#10B981' },
+};
+
+// ─── StatusPill ───────────────────────────────────────────────────
+function StatusPill({ status }) {
+  const s = STATUS_DISPLAY[status] || STATUS_DISPLAY['Transit'];
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '5px 13px', borderRadius: 999,
+      background: s.color + '22',
+      border: `1px solid ${s.color}44`,
+      color: s.color, fontSize: 12, fontWeight: 600,
+    }}>
+      {s.icon} {s.label}
+    </div>
+  );
+}
+
+// ─── StepTimeline ─────────────────────────────────────────────────
+function StepTimeline({ status }) {
+  // step 0 is always done (order exists = created)
+  const currentStep = getStep(status);
 
   return (
-    <div style={{ marginTop: 16, marginBottom: 4 }}>
-      {/* Green progress line behind the dots */}
+    <div style={{ marginTop: 14 }}>
+      {/* Green progress bar */}
       <div style={{
-        position:'relative', height:4, background:'#1F2937',
-        borderRadius:999, margin:'0 11px',
+        position: 'relative', height: 4,
+        background: '#2D2A26', borderRadius: 999, margin: '0 6px',
       }}>
         <div style={{
-          position:'absolute', height:'100%', borderRadius:999,
-          width: isAllDone ? '100%' : `${(current / (PIPELINE.length - 1)) * 100}%`,
-          background:'linear-gradient(90deg, #10B981, #34D399)',
-          transition:'width 0.5s ease',
+          position: 'absolute', height: '100%', borderRadius: 999,
+          width: `${(currentStep / (PIPELINE.length - 1)) * 100}%`,
+          background: '#10B981', transition: 'width 0.4s ease',
         }} />
       </div>
 
-      {/* Step circles */}
-      <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
+      {/* Step circles + labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
         {PIPELINE.map((s, i) => {
-          const done    = i < current || isAllDone;
-          const active  = i === current && !isAllDone;
-
+          const done    = i < currentStep;
+          const current = i === currentStep;
           return (
-            <div key={i} style={{ textAlign:'center', flex:1 }}>
+            <div key={i} style={{ textAlign: 'center', flex: 1 }}>
               {/* Circle */}
               <div style={{
-                width: active ? 28 : 22, height: active ? 28 : 22,
-                margin:'0 auto', borderRadius:'50%',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontWeight:700, color:'#fff',
-                fontSize: done ? 11 : active ? 14 : 10,
-                background: done   ? '#10B981'
-                          : active ? '#F59E0B'
-                          : '#1F2937',
-                border: done || active ? 'none' : '1.5px solid #374151',
-                boxShadow: active ? '0 0 0 5px #F59E0B22' : 'none',
-                transition:'all 0.3s ease',
+                width: current ? 26 : 20,
+                height: current ? 26 : 20,
+                margin: '0 auto', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700, color: '#FFFFFF',
+                background: done    ? '#10B981'
+                          : current ? '#F59E0B'
+                          : '#374151',
+                boxShadow: current ? '0 0 0 4px #F59E0B20' : 'none',
+                transition: 'all 0.3s ease',
               }}>
-                {done ? '✓' : active ? s.icon : i + 1}
+                {done ? '✓' : i + 1}
               </div>
-
               {/* Label */}
               <div style={{
-                marginTop:6, fontSize:9, lineHeight:1.3,
-                fontWeight: active ? 700 : 500,
-                color: active ? '#F59E0B'
-                     : done   ? '#9CA3AF'
-                     : '#4B5563',
+                marginTop: 6, fontSize: 9, lineHeight: 1.3,
+                fontWeight: current ? 700 : 500,
+                color: current ? '#FFFFFF' : done ? '#D1D5DB' : '#6B7280',
               }}>{s.short}</div>
             </div>
           );
@@ -125,7 +138,7 @@ function StatusStrip({ status, hasTracking }) {
 // ─── TrackingCard ─────────────────────────────────────────────────
 function TrackingCard({ order, isNew }) {
   const [copied, setCopied] = useState(false);
-  const avatarBg   = getAvatarColor(order.name);
+  const avatarBg    = getAvatarColor(order.name);
   const hasTracking = !!order.trackingId;
 
   const handleCopy = async () => {
@@ -138,71 +151,77 @@ function TrackingCard({ order, isNew }) {
 
   return (
     <div style={{
-      background:'#0D1117', border:'1px solid #1F2937',
-      borderRadius:20, padding:'16px 16px 16px',
-      animation:'cardIn 0.4s ease both', position:'relative',
+      background: '#0D1117', border: '1px solid #1F2937',
+      borderRadius: 20, padding: '18px 18px 16px',
+      animation: 'cardIn 0.4s ease both', position: 'relative',
     }}>
       {isNew && (
         <div style={{
-          position:'absolute', top:14, right:14,
-          background:'#92400e', color:'#fcd34d',
-          fontSize:10, fontWeight:700, padding:'2px 9px',
-          borderRadius:999, letterSpacing:'0.06em',
+          position: 'absolute', top: 14, right: 14,
+          background: '#92400e', color: '#fcd34d',
+          fontSize: 10, fontWeight: 700, padding: '2px 9px',
+          borderRadius: 999, letterSpacing: '0.06em',
         }}>NEW</div>
       )}
 
-      {/* Avatar + Name */}
-      <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+      {/* Avatar + Name row */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
         <div style={{
-          width:44, height:44, borderRadius:'50%', background:avatarBg,
-          display:'flex', alignItems:'center', justifyContent:'center',
-          fontSize:15, fontWeight:700, color:'#fff', flexShrink:0,
-          fontFamily:"'Syne',sans-serif",
+          width: 44, height: 44, borderRadius: '50%', background: avatarBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
+          fontFamily: "'Syne', sans-serif",
         }}>{getInitials(order.name)}</div>
 
-        <div style={{ minWidth:0, flex:1 }}>
+        <div style={{ minWidth: 0 }}>
           <div style={{
-            fontWeight:700, fontSize:16, color:'#F9FAFB',
-            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+            fontWeight: 700, fontSize: 16, color: '#F9FAFB',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{order.name}</div>
-          <div style={{ fontSize:12, color:'#6B7280', marginTop:2, display:'flex', alignItems:'center', gap:6 }}>
+          <div style={{
+            fontSize: 12, color: '#6B7280', marginTop: 2,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
             {order.orderId && (
-              <span style={{ fontFamily:'monospace', letterSpacing:'-0.3px' }}>{order.orderId}</span>
+              <span style={{ fontFamily: 'monospace', letterSpacing: '-0.3px' }}>{order.orderId}</span>
             )}
             {order.orderId && order.pincode && <span>·</span>}
             {order.pincode && (
-              <span style={{ display:'flex', alignItems:'center', gap:3 }}>
-                📍 <span style={{ fontWeight:700, color:'#9CA3AF' }}>{order.pincode}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                📍 <strong style={{ color: '#9CA3AF', fontWeight: 700 }}>{order.pincode}</strong>
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Progress strip */}
-      <StatusStrip status={order.status} hasTracking={hasTracking} />
+      {/* Status pill */}
+      <StatusPill status={order.status || 'Order Created'} />
 
-      {/* Tracking ID box + copy */}
+      {/* Step timeline */}
+      <StepTimeline status={order.status} />
+
+      {/* Tracking ID + copy */}
       {order.trackingId && (
         <div style={{
-          display:'flex', alignItems:'center', gap:8,
-          background:'#080d17', border:'1px solid #1a2035',
-          borderRadius:10, padding:'8px 12px', marginTop:14,
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: '#080d17', border: '1px solid #1a2035',
+          borderRadius: 10, padding: '8px 12px', marginTop: 14,
         }}>
           <span style={{
-            flex:1, fontStyle:'italic', fontWeight:700,
-            fontSize:13, color:'#A78BFA', letterSpacing:'0.4px',
-            fontFamily:'monospace',
-            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+            flex: 1, fontStyle: 'italic', fontWeight: 700,
+            fontSize: 13, color: '#A78BFA', letterSpacing: '0.4px',
+            fontFamily: 'monospace',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{order.trackingId}</span>
 
           <button onClick={handleCopy} style={{
             background: copied ? '#052e16' : '#1F2937',
             color: copied ? '#4ade80' : '#9CA3AF',
-            border:'none', borderRadius:6, padding:'5px 11px',
-            fontSize:11, cursor:'pointer', fontWeight:600,
-            transition:'all 0.2s', flexShrink:0,
-            fontFamily:"'DM Sans',sans-serif",
+            border: 'none', borderRadius: 6, padding: '5px 11px',
+            fontSize: 11, cursor: 'pointer', fontWeight: 600,
+            transition: 'all 0.2s', flexShrink: 0,
+            fontFamily: "'DM Sans', sans-serif",
           }}>
             {copied ? '✓ Copied' : '📋 Copy'}
           </button>
@@ -212,19 +231,17 @@ function TrackingCard({ order, isNew }) {
       {/* Big Live Tracking button */}
       {order.trackingLink && (
         <a href={order.trackingLink} target="_blank" rel="noreferrer" style={{
-          display:'flex', alignItems:'center', justifyContent:'center', gap:10,
-          marginTop:12, padding:'14px 20px', borderRadius:14,
-          background:'linear-gradient(135deg, #1a3a8f 0%, #1D4ED8 100%)',
-          color:'#fff', fontSize:15, fontWeight:700,
-          textDecoration:'none', letterSpacing:'-0.2px',
-          boxShadow:'0 6px 24px #1D4ED835',
-          border:'1px solid #2563eb60',
-          transition:'opacity 0.2s',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          marginTop: 12, padding: '14px 20px', borderRadius: 14,
+          background: 'linear-gradient(135deg, #1a3a8f, #1D4ED8)',
+          color: '#fff', fontSize: 15, fontWeight: 700,
+          textDecoration: 'none', letterSpacing: '-0.2px',
+          boxShadow: '0 6px 24px #1D4ED835',
+          border: '1px solid #2563eb60',
         }}>
-          {/* Pulsing live dot */}
-          <span style={{ position:'relative', display:'inline-flex', alignItems:'center', justifyContent:'center', width:10, height:10, flexShrink:0 }}>
-            <span style={{ position:'absolute', width:'100%', height:'100%', borderRadius:'50%', background:'#60A5FA', opacity:0.5, animation:'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
-            <span style={{ width:7, height:7, borderRadius:'50%', background:'#93C5FD' }} />
+          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 10, height: 10, flexShrink: 0 }}>
+            <span style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', background: '#60A5FA', opacity: 0.5, animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#93C5FD' }} />
           </span>
           📍 Live Tracking
         </a>
