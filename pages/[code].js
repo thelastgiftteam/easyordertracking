@@ -1,27 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 
-const REFRESH_SECONDS = 30;
+const BG_REFRESH_MS = 5 * 60 * 1000; // silent background refresh every 5 min
 
 // ─── Static generation ────────────────────────────────────────────
 export async function getStaticPaths() {
-  // No pre-rendered paths; new codes are generated on first visit
   return { paths: [], fallback: 'blocking' };
 }
 
 export async function getStaticProps({ params }) {
   const { code } = params;
   const HQ = process.env.HQ_ENDPOINT;
-
-  if (!HQ) {
-    return { props: { code, config: null }, revalidate: 60 };
-  }
-
+  if (!HQ) return { props: { code, config: null }, revalidate: 60 };
   try {
     const res  = await fetch(`${HQ}?action=resolve&code=${code}`);
     const data = await res.json();
     if (!data.found) return { notFound: true, revalidate: 60 };
-    return { props: { code, config: data }, revalidate: 300 }; // 5-min ISR; CSM can force-clear via Update Website button
+    return { props: { code, config: data }, revalidate: 300 };
   } catch {
     return { notFound: true, revalidate: 60 };
   }
@@ -31,7 +26,6 @@ export async function getStaticProps({ params }) {
 function getInitials(name = '') {
   return name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?';
 }
-
 function getAvatarColor(name = '') {
   const colors = ['#7C3AED','#DB2777','#D97706','#059669','#2563EB','#DC2626'];
   let h = 0;
@@ -49,18 +43,84 @@ function LiveDot() {
   );
 }
 
+// ─── StatusStrip ──────────────────────────────────────────────────
+function StatusStrip({ status, hasTracking }) {
+  const steps = [
+    { label: 'Order Created' },
+    { label: 'Shipped' },
+    { label: 'In Transit' },
+    { label: 'Delivered' },
+  ];
+
+  // Determine how far along the order is
+  let activeStep = 0;
+  if (hasTracking)              activeStep = 1;
+  if (status === 'Transit')     activeStep = 2;
+  if (status === 'Delivered')   activeStep = 3;
+
+  return (
+    <div style={{ margin: '14px 0 12px' }}>
+      {/* Line + dots row */}
+      <div style={{ display:'flex', alignItems:'center' }}>
+        {steps.map((step, i) => (
+          <div key={i} style={{ display:'flex', alignItems:'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
+            <div style={{
+              width: i === activeStep ? 22 : 16,
+              height: i === activeStep ? 22 : 16,
+              borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9, fontWeight: 700, color: '#fff',
+              background: i < activeStep  ? '#10B981'
+                        : i === activeStep ? '#F59E0B'
+                        : '#1F2937',
+              boxShadow: i === activeStep ? '0 0 0 4px #F59E0B20' : 'none',
+              transition: 'all 0.3s',
+              border: i > activeStep ? '1px solid #374151' : 'none',
+            }}>
+              {i < activeStep ? '✓' : ''}
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{
+                flex: 1, height: 2,
+                background: i < activeStep ? '#10B981' : '#1F2937',
+                transition: 'background 0.4s',
+              }} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Labels */}
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop: 6 }}>
+        {steps.map((step, i) => (
+          <div key={i} style={{
+            fontSize: 9, textAlign: 'center',
+            color: i < activeStep  ? '#6B7280'
+                 : i === activeStep ? '#F59E0B'
+                 : '#374151',
+            fontWeight: i === activeStep ? 700 : 500,
+            width: '25%',
+            lineHeight: 1.3,
+          }}>{step.label}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── TrackingCard ─────────────────────────────────────────────────
 function TrackingCard({ order, isNew }) {
   const [copied, setCopied] = useState(false);
   const avatarBg    = getAvatarColor(order.name);
   const isDelivered = order.status === 'Delivered';
+  const hasTracking = !!order.trackingId;
 
   const pillStyle = {
     display:'inline-flex', alignItems:'center', gap:5,
-    padding:'5px 12px', borderRadius:999, fontSize:12, fontWeight:600,
+    padding:'4px 10px', borderRadius:999, fontSize:11, fontWeight:600,
     background: isDelivered ? '#052e16' : '#451a03',
     color:      isDelivered ? '#4ade80' : '#fbbf24',
-    border:    `1px solid ${isDelivered ? '#4ade8030' : '#fbbf2430'}`,
+    border:    `1px solid ${isDelivered ? '#4ade8040' : '#fbbf2440'}`,
   };
 
   const handleCopy = async () => {
@@ -74,10 +134,9 @@ function TrackingCard({ order, isNew }) {
   return (
     <div style={{
       background:'#0D1117', border:'1px solid #1F2937',
-      borderRadius:20, padding:'18px 18px 14px',
+      borderRadius:20, padding:'16px 16px 14px',
       animation:'cardIn 0.4s ease both', position:'relative',
     }}>
-      {/* NEW badge */}
       {isNew && (
         <div style={{
           position:'absolute', top:14, right:14,
@@ -87,8 +146,8 @@ function TrackingCard({ order, isNew }) {
         }}>NEW</div>
       )}
 
-      {/* Avatar + name row */}
-      <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:14 }}>
+      {/* Avatar + Name row */}
+      <div style={{ display:'flex', gap:12, alignItems:'center' }}>
         <div style={{
           width:42, height:42, borderRadius:'50%', background:avatarBg,
           display:'flex', alignItems:'center', justifyContent:'center',
@@ -101,9 +160,10 @@ function TrackingCard({ order, isNew }) {
             fontWeight:700, fontSize:16, color:'#F9FAFB',
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
           }}>{order.name}</div>
-
-          <div style={{ fontSize:12, color:'#6B7280', marginTop:3, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-            {order.orderId && <span style={{ fontFamily:'monospace', letterSpacing:'-0.3px' }}>{order.orderId}</span>}
+          <div style={{ fontSize:12, color:'#6B7280', marginTop:2, display:'flex', alignItems:'center', gap:6 }}>
+            {order.orderId && (
+              <span style={{ fontFamily:'monospace', letterSpacing:'-0.3px' }}>{order.orderId}</span>
+            )}
             {order.orderId && order.pincode && <span>·</span>}
             {order.pincode && (
               <span style={{ display:'flex', alignItems:'center', gap:3 }}>
@@ -114,37 +174,46 @@ function TrackingCard({ order, isNew }) {
         </div>
       </div>
 
-      {/* Status + action buttons */}
-      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+      {/* Progress strip */}
+      <StatusStrip status={order.status} hasTracking={hasTracking} />
+
+      {/* Tracking ID box + buttons */}
+      {order.trackingId ? (
+        <div style={{
+          display:'flex', alignItems:'center', gap:8,
+          background:'#080d17', border:'1px solid #1F2937',
+          borderRadius:10, padding:'8px 12px',
+        }}>
+          <span style={{
+            flex:1, fontStyle:'italic', fontWeight:700,
+            fontSize:13, color:'#A78BFA',
+            letterSpacing:'0.4px', fontFamily:'monospace',
+            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+          }}>{order.trackingId}</span>
+
+          <button onClick={handleCopy} style={{
+            background: copied ? '#052e16' : '#1F2937',
+            color: copied ? '#4ade80' : '#9CA3AF',
+            border:'none', borderRadius:6, padding:'4px 10px',
+            fontSize:11, cursor:'pointer', fontWeight:600,
+            transition:'all 0.2s', flexShrink:0,
+            fontFamily:"'DM Sans',sans-serif",
+          }}>
+            {copied ? '✓ Copied' : '📋 Copy'}
+          </button>
+
+          {order.trackingLink && (
+            <a href={order.trackingLink} target="_blank" rel="noreferrer" style={{
+              background:'#1D4ED8', color:'#fff', borderRadius:6,
+              padding:'4px 12px', fontSize:11, fontWeight:600,
+              textDecoration:'none', flexShrink:0,
+            }}>Track →</a>
+          )}
+        </div>
+      ) : (
+        /* No tracking yet — just show status pill */
         <div style={pillStyle}>
           {isDelivered ? '✓' : '🚚'} {order.status}
-        </div>
-
-        {order.trackingId && (
-          <button onClick={handleCopy} style={{
-            background:'#1F2937', color: copied ? '#4ade80' : '#D1D5DB',
-            border:'1px solid #374151', borderRadius:999,
-            padding:'5px 12px', fontSize:12, cursor:'pointer', fontWeight:500,
-            transition:'color 0.2s',
-          }}>
-            {copied ? '✓ Copied' : '📋 Copy ID'}
-          </button>
-        )}
-
-        {/* Track button — always visible regardless of status */}
-        {order.trackingLink && (
-          <a href={order.trackingLink} target="_blank" rel="noreferrer" style={{
-            background:'#1D4ED8', color:'#fff', borderRadius:999,
-            padding:'5px 14px', fontSize:12, fontWeight:600,
-            textDecoration:'none', display:'inline-block',
-          }}>Track →</a>
-        )}
-      </div>
-
-      {/* Shipped date */}
-      {order.shippedOn && (
-        <div style={{ fontSize:11, color:'#4B5563', marginTop:10 }}>
-          Shipped {order.shippedOn}
         </div>
       )}
     </div>
@@ -155,11 +224,10 @@ function TrackingCard({ order, isNew }) {
 function BottomBar({ bar }) {
   if (!bar || !bar.text || bar.active === false) return null;
   const isBtn = bar.mode === 'button' && bar.link;
-
   const inner = (
     <div style={{
       display:'flex', alignItems:'center', justifyContent:'center', gap:10,
-      padding:'15px 20px',
+      padding:'14px 20px',
       background:'linear-gradient(135deg, #064E3B, #065F46)',
       border:'1px solid #059669', borderRadius:16,
       color:'#10B981', fontSize:14, fontWeight:600,
@@ -169,7 +237,6 @@ function BottomBar({ bar }) {
       <span>{bar.text}</span>
     </div>
   );
-
   return (
     <div style={{
       position:'fixed', bottom:0, left:0, right:0,
@@ -178,11 +245,48 @@ function BottomBar({ bar }) {
       zIndex:50,
     }}>
       <div style={{ maxWidth:560, margin:'0 auto' }}>
-        {isBtn ? (
-          <a href={bar.link} target="_blank" rel="noreferrer" style={{ textDecoration:'none' }}>
-            {inner}
-          </a>
-        ) : inner}
+        {isBtn ? <a href={bar.link} target="_blank" rel="noreferrer" style={{ textDecoration:'none' }}>{inner}</a> : inner}
+      </div>
+    </div>
+  );
+}
+
+// ─── SuspendedPage ────────────────────────────────────────────────
+function SuspendedPage({ brandName }) {
+  return (
+    <div style={{
+      minHeight:'100vh', background:'#030712', display:'flex',
+      alignItems:'center', justifyContent:'center',
+      fontFamily:"'DM Sans',sans-serif", padding:24,
+    }}>
+      <div style={{ maxWidth:400, width:'100%', textAlign:'center' }}>
+        <div style={{ fontSize:52, marginBottom:20 }}>⏸️</div>
+        <div style={{
+          fontSize:20, fontWeight:800, color:'#F9FAFB',
+          fontFamily:"'Syne',sans-serif", marginBottom:10,
+        }}>{brandName.toUpperCase()}</div>
+        <div style={{
+          background:'#0D1117', border:'1px solid #292524',
+          borderRadius:20, padding:'28px 24px',
+        }}>
+          <div style={{
+            display:'inline-block', background:'#451a0340',
+            border:'1px solid #92400e60', borderRadius:8,
+            padding:'4px 14px', fontSize:11, fontWeight:700,
+            color:'#fbbf24', letterSpacing:'0.08em', marginBottom:18,
+          }}>SERVICE PAUSED</div>
+
+          <p style={{ color:'#D1D5DB', fontSize:15, lineHeight:1.7, marginBottom:16 }}>
+            Order tracking for this business is temporarily unavailable.
+          </p>
+          <p style={{ color:'#6B7280', fontSize:13, lineHeight:1.6 }}>
+            If you placed an order, please contact the business directly for updates.
+            We apologise for the inconvenience.
+          </p>
+        </div>
+        <p style={{ fontSize:11, color:'#374151', marginTop:24 }}>
+          Powered by EasyOrderTracking
+        </p>
       </div>
     </div>
   );
@@ -190,16 +294,17 @@ function BottomBar({ bar }) {
 
 // ─── Page ─────────────────────────────────────────────────────────
 export default function TrackingPage({ code, config }) {
-  const [orders,   setOrders]   = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
-  const [ticker,   setTicker]   = useState(REFRESH_SECONDS);
-  const [search,   setSearch]   = useState('');
-  const [syncTime, setSyncTime] = useState('');
+  const [orders,    setOrders]    = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [refreshing,setRefreshing]= useState(false);
+  const [error,     setError]     = useState(null);
+  const [search,    setSearch]    = useState('');
+  const [syncTime,  setSyncTime]  = useState('');
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (isManual = false) => {
+    if (isManual) setRefreshing(true);
     try {
-      const res  = await fetch(`/api/orders?code=${code}`);
+      const res  = await fetch(`/api/orders?code=${code}&t=${Date.now()}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setOrders(data.orders || []);
@@ -209,34 +314,40 @@ export default function TrackingPage({ code, config }) {
       setError('Could not refresh. Check your connection.');
     } finally {
       setLoading(false);
-      setTicker(REFRESH_SECONDS);
+      setRefreshing(false);
     }
   }, [code]);
 
-  // Initial fetch + polling
+  // Initial load + silent background refresh every 5 min
   useEffect(() => {
     fetchOrders();
-    const iv = setInterval(fetchOrders, REFRESH_SECONDS * 1000);
+    const iv = setInterval(() => fetchOrders(false), BG_REFRESH_MS);
     return () => clearInterval(iv);
   }, [fetchOrders]);
-
-  // Countdown ticker
-  useEffect(() => {
-    const t = setInterval(() => setTicker(n => n > 0 ? n - 1 : 0), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   const filtered = orders.filter(o => {
     const q = search.toLowerCase().trim();
     if (!q) return true;
-    return (
-      o.name?.toLowerCase().includes(q) ||
-      o.orderId?.toLowerCase().includes(q)
-    );
+    return o.name?.toLowerCase().includes(q) || o.orderId?.toLowerCase().includes(q);
   });
 
+  // ── Suspended state ──
+  if (config?.suspended) {
+    return (
+      <>
+        <Head>
+          <title>Service Paused</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <meta name="robots" content="noindex" />
+          <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,600&display=swap" rel="stylesheet" />
+        </Head>
+        <style>{`*{margin:0;padding:0;box-sizing:border-box;}`}</style>
+        <SuspendedPage brandName={config.brandName || 'This Store'} />
+      </>
+    );
+  }
+
   const brandName = config?.brandName || 'Order Tracking';
-  const tagline   = config?.tagline   || 'Live Order Status';
   const bottomBar = config?.bottomBar;
 
   return (
@@ -258,6 +369,7 @@ export default function TrackingPage({ code, config }) {
         @keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(0.97);}to{opacity:1;transform:none;}}
         @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
         @keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+        @keyframes spin{to{transform:rotate(360deg);}}
         input{border:none;outline:none;}
         a{transition:opacity 0.2s;}a:hover{opacity:0.85;}
         ::-webkit-scrollbar{width:3px;}
@@ -267,11 +379,10 @@ export default function TrackingPage({ code, config }) {
         button{font-family:'DM Sans',sans-serif;}
       `}</style>
 
-      {/* bg radial gradient */}
       <div style={{ position:'fixed', inset:0, zIndex:0, pointerEvents:'none',
-        background:'radial-gradient(ellipse 80% 50% at 50% -10%, #1a0a2e20 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 80%, #0a1a1215 0%, transparent 60%)' }} />
+        background:'radial-gradient(ellipse 80% 50% at 50% -10%, #1a0a2e20 0%, transparent 70%)' }} />
 
-      {/* ── Sticky Header ── */}
+      {/* ── Header ── */}
       <header style={{
         position:'sticky', top:0, zIndex:100,
         background:'rgba(3,7,18,0.88)', backdropFilter:'blur(20px)',
@@ -285,14 +396,11 @@ export default function TrackingPage({ code, config }) {
                 letterSpacing:'-0.5px',
                 background:'linear-gradient(135deg, #F9FAFB 0%, #9CA3AF 100%)',
                 WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              }}>
-                {brandName.toUpperCase()}
-              </div>
+              }}>{brandName.toUpperCase()}</div>
               <div style={{ fontSize:12, color:'#FFFFFF', letterSpacing:'0.08em', marginTop:1 }}>
                 ORDER TRACKING
               </div>
             </div>
-
             <div style={{
               display:'flex', alignItems:'center', gap:8,
               padding:'6px 12px', background:'#0D1117',
@@ -307,15 +415,11 @@ export default function TrackingPage({ code, config }) {
         </div>
       </header>
 
-      {/* ── Main ── */}
       <main style={{ maxWidth:560, margin:'0 auto', padding:'0 16px', position:'relative', zIndex:1 }}>
 
-        {/* Search — sticky below header */}
+        {/* ── Search ── */}
         {config?.showSearch !== false && (
-          <div style={{
-            position:'sticky', top:52, zIndex:50,
-            paddingTop:12, paddingBottom:10, background:'#030712',
-          }}>
+          <div style={{ position:'sticky', top:52, zIndex:50, paddingTop:12, paddingBottom:10, background:'#030712' }}>
             <div style={{ position:'relative' }}>
               <span style={{
                 position:'absolute', left:16, top:'50%', transform:'translateY(-50%)',
@@ -330,8 +434,7 @@ export default function TrackingPage({ code, config }) {
                   background:'#FFFFFF', border:'1px solid #E5E7EB',
                   borderRadius:16, color:'#111827', fontSize:14, fontWeight:500,
                   fontFamily:"'DM Sans',sans-serif",
-                  boxShadow:'0 4px 20px rgba(0,0,0,0.2)',
-                  transition:'all 0.2s',
+                  boxShadow:'0 4px 20px rgba(0,0,0,0.2)', transition:'all 0.2s',
                 }}
                 onFocus={e => { e.target.style.borderColor='#F59E0B80'; e.target.style.boxShadow='0 0 0 3px #F59E0B15'; }}
                 onBlur={e  => { e.target.style.borderColor='#E5E7EB'; e.target.style.boxShadow='0 4px 20px rgba(0,0,0,0.2)'; }}
@@ -348,16 +451,16 @@ export default function TrackingPage({ code, config }) {
           </div>
         )}
 
-        {/* Loading skeletons */}
+        {/* ── Skeletons ── */}
         {loading && (
           <div style={{ display:'flex', flexDirection:'column', gap:12, marginTop:8 }}>
             {[1,2,3].map(i => (
-              <div key={i} className="skeleton" style={{ height:138, opacity: 1 - i * 0.2 }} />
+              <div key={i} className="skeleton" style={{ height:170, opacity: 1 - i * 0.2 }} />
             ))}
           </div>
         )}
 
-        {/* Error */}
+        {/* ── Error ── */}
         {error && !loading && (
           <div style={{
             padding:14, marginTop:8, marginBottom:12,
@@ -367,7 +470,7 @@ export default function TrackingPage({ code, config }) {
           }}>⚠️ {error}</div>
         )}
 
-        {/* Section header */}
+        {/* ── Section header with refresh button ── */}
         {!loading && (
           <div style={{
             display:'flex', justifyContent:'space-between',
@@ -376,13 +479,30 @@ export default function TrackingPage({ code, config }) {
             <span style={{ fontSize:11, color:'#FFFFFF', letterSpacing:'0.08em', fontWeight:600 }}>
               {search ? `${filtered.length} RESULT${filtered.length !== 1 ? 'S' : ''}` : 'LIVE ORDERS'}
             </span>
-            <span style={{ fontSize:11, color:'#FACC15', fontWeight:500 }}>
-              Refreshing in {ticker}s
-            </span>
+
+            {/* Manual refresh button */}
+            <button
+              onClick={() => fetchOrders(true)}
+              disabled={refreshing}
+              style={{
+                display:'flex', alignItems:'center', gap:5,
+                background:'transparent', border:'1px solid #1F2937',
+                borderRadius:999, padding:'4px 12px',
+                color: refreshing ? '#374151' : '#6B7280',
+                fontSize:11, cursor: refreshing ? 'default' : 'pointer',
+                transition:'all 0.2s',
+              }}
+            >
+              <span style={{
+                display:'inline-block',
+                animation: refreshing ? 'spin 0.8s linear infinite' : 'none',
+              }}>🔄</span>
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
           </div>
         )}
 
-        {/* Empty state */}
+        {/* ── Empty state ── */}
         {!loading && filtered.length === 0 && (
           <div style={{ textAlign:'center', padding:'64px 0', animation:'fadeIn 0.4s ease' }}>
             <div style={{ fontSize:48, marginBottom:16 }}>{search ? '🔍' : '📦'}</div>
@@ -395,7 +515,7 @@ export default function TrackingPage({ code, config }) {
           </div>
         )}
 
-        {/* Order cards */}
+        {/* ── Cards ── */}
         {!loading && filtered.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {filtered.map((order, i) => (
@@ -410,7 +530,6 @@ export default function TrackingPage({ code, config }) {
 
       </main>
 
-      {/* Bottom bar */}
       {bottomBar && <BottomBar bar={bottomBar} />}
     </>
   );
