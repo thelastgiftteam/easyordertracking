@@ -178,7 +178,7 @@ function OrderCard({ order, index, isNew }) {
               {order.orderId}
             </span>
             <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#374151' }} />
-            <span style={{ fontSize: 11, color: '#4B5563' }}>📍 {order.pincode}</span>
+            <span style={{ fontSize: 11, color: '#F9FAFB' }}>📍 {order.pincode}</span>
           </div>
 
           {/* Status pill — hidden when delivered */}
@@ -227,14 +227,9 @@ function OrderCard({ order, index, isNew }) {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginTop: 12, paddingTop: 12, borderTop: '1px solid #0D1117',
       }}>
-        <span style={{
-          fontSize: 11, color: '#9CA3AF',
-          fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.02em',
-        }}>
-          Updated {timeAgo(order.shippedTs)}
-        </span>
+      
 
-        {isOnWay && link && (
+        {link && (
           <a
             href={link}
             target="_blank" rel="noopener noreferrer"
