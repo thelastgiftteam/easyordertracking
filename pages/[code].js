@@ -431,16 +431,39 @@ export default function TrackingPage({ code, config }) {
                 ORDER TRACKING
               </div>
             </div>
-            <div style={{
-              display:'flex', alignItems:'center', gap:8,
-              padding:'6px 12px', background:'#0D1117',
-              border:'1px solid #1F2937', borderRadius:999,
-            }}>
-              <LiveDot />
-              <span style={{ fontSize:11, color:'#6B7280' }}>
-                {syncTime || 'Connecting'}
-              </span>
-            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+  <div style={{
+    display:'flex', alignItems:'center', gap:8,
+    padding:'6px 12px', background:'#0D1117',
+    border:'1px solid #1F2937', borderRadius:999,
+  }}>
+    <LiveDot />
+    <span style={{ fontSize:11, color:'#6B7280' }}>
+      {syncTime || 'Connecting'}
+    </span>
+  </div>
+
+  <button
+    onClick={() => fetchOrders(true)}
+    disabled={refreshing}
+    style={{
+      display:'flex', alignItems:'center', gap:6,
+      padding:'7px 16px',
+      background: refreshing ? '#1F2937' : '#1D4ED8',
+      border:'none', borderRadius:999,
+      color:'#fff', fontSize:12, fontWeight:600,
+      cursor: refreshing ? 'default' : 'pointer',
+      transition:'all 0.2s',
+      fontFamily:"'DM Sans',sans-serif",
+    }}
+  >
+    <span style={{
+      display:'inline-block',
+      animation: refreshing ? 'spin 0.8s linear infinite' : 'none',
+    }}>🔄</span>
+    {refreshing ? 'Refreshing…' : 'Refresh'}
+  </button>
+</div>
           </div>
         </div>
       </header>
