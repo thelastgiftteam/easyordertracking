@@ -43,93 +43,159 @@ function LiveDot() {
   );
 }
 
-// ─── Pipeline ────────────────────────────────────────────────────
-// 3 steps only. CSM never needs to touch anything except Transit→Delivered.
+// ─── Pipeline & Status ───────────────────────────────────────────
 const PIPELINE = [
-  { short: 'Order Created', icon: '📋' },
-  { short: 'On the Way',    icon: '🚚' },
-  { short: 'Delivered',     icon: '✅' },
+  { short: 'Order Created' },
+  { short: 'On the Way'    },
+  { short: 'Delivered'     },
 ];
-
-// step 0 = Order Created (row added, no tracking yet — visually always done)
-// step 1 = On the Way    (Transit — default status set by sheet onEdit)
-// step 2 = Delivered     (CSM changes Transit → Delivered, that's it)
-function getStep(status) {
-  if (status === 'Delivered') return 2;
-  return 1; // Transit or anything else = On the Way
-}
 
 const STATUS_DISPLAY = {
   'Transit':   { label: 'On the Way', icon: '🚚', color: '#60A5FA' },
   'Delivered': { label: 'Delivered',  icon: '✅', color: '#10B981' },
 };
 
-// ─── StatusPill ───────────────────────────────────────────────────
-function StatusPill({ status }) {
-  const s = STATUS_DISPLAY[status] || STATUS_DISPLAY['Transit'];
+function getStep(status) {
+  if (status === 'Delivered') return 2;
+  return 1;
+}
+
+// ─── TrackingCoupon — dashed coupon-style tracking ID box ─────────
+function TrackingCoupon({ trackingId, onCopy, copied }) {
   return (
     <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '5px 13px', borderRadius: 999,
-      background: s.color + '22',
-      border: `1px solid ${s.color}44`,
-      color: s.color, fontSize: 12, fontWeight: 600,
+      margin: '12px 0 0',
+      border: '1.5px dashed #374151',
+      borderRadius: 12,
+      padding: '10px 12px',
+      background: '#060A12',
+      display: 'flex', alignItems: 'center', gap: 10,
     }}>
-      {s.icon} {s.label}
+      <span style={{ fontSize: 15, flexShrink: 0 }}>📦</span>
+      <span style={{
+        flex: 1, fontFamily: 'monospace', fontStyle: 'italic',
+        fontWeight: 700, fontSize: 14, color: '#A78BFA',
+        letterSpacing: '0.4px',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{trackingId}</span>
+      <button onClick={onCopy} style={{
+        background: copied ? '#052e16' : '#1F2937',
+        color: copied ? '#4ade80' : '#9CA3AF',
+        border: `1px solid ${copied ? '#4ade8030' : '#374151'}`,
+        borderRadius: 7, padding: '5px 12px',
+        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+        flexShrink: 0, fontFamily: "'DM Sans', sans-serif",
+        transition: 'all 0.2s',
+      }}>
+        {copied ? '✓ Copied' : '📋 Copy'}
+      </button>
     </div>
   );
 }
 
-// ─── StepTimeline ─────────────────────────────────────────────────
+// ─── StepTimeline — pill floats above current step ────────────────
 function StepTimeline({ status }) {
-  // step 0 is always done (order exists = created)
   const currentStep = getStep(status);
+  const pill        = STATUS_DISPLAY[status] || STATUS_DISPLAY['Transit'];
 
   return (
-    <div style={{ marginTop: 14 }}>
-      {/* Green progress bar */}
-      <div style={{
-        position: 'relative', height: 4,
-        background: '#2D2A26', borderRadius: 999, margin: '0 6px',
-      }}>
-        <div style={{
-          position: 'absolute', height: '100%', borderRadius: 999,
-          width: `${(currentStep / (PIPELINE.length - 1)) * 100}%`,
-          background: '#10B981', transition: 'width 0.4s ease',
-        }} />
-      </div>
-
-      {/* Step circles + labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+    <div style={{ marginTop: 16 }}>
+      {/* Steps row: pill above current, circles, labels */}
+      <div style={{ display: 'flex', position: 'relative' }}>
         {PIPELINE.map((s, i) => {
           const done    = i < currentStep;
           const current = i === currentStep;
           return (
-            <div key={i} style={{ textAlign: 'center', flex: 1 }}>
+            <div key={i} style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: 0,
+            }}>
+              {/* Floating status pill above current step only */}
+              <div style={{ height: 26, display: 'flex', alignItems: 'flex-end', marginBottom: 5 }}>
+                {current && (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 9px', borderRadius: 999,
+                    background: pill.color + '22',
+                    border: `1px solid ${pill.color}55`,
+                    color: pill.color, fontSize: 10, fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {pill.icon} {pill.label}
+                  </div>
+                )}
+              </div>
+
               {/* Circle */}
               <div style={{
-                width: current ? 26 : 20,
-                height: current ? 26 : 20,
-                margin: '0 auto', borderRadius: '50%',
+                width: current ? 28 : 22,
+                height: current ? 28 : 22,
+                borderRadius: '50%', zIndex: 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700, color: '#FFFFFF',
+                fontSize: 11, fontWeight: 700, color: '#fff',
                 background: done    ? '#10B981'
                           : current ? '#F59E0B'
                           : '#374151',
-                boxShadow: current ? '0 0 0 4px #F59E0B20' : 'none',
-                transition: 'all 0.3s ease',
+                boxShadow: current ? '0 0 0 5px #F59E0B22' : 'none',
+                border: done || current ? 'none' : '1.5px solid #4B5563',
+                transition: 'all 0.3s',
               }}>
                 {done ? '✓' : i + 1}
               </div>
-              {/* Label */}
-              <div style={{
-                marginTop: 6, fontSize: 9, lineHeight: 1.3,
-                fontWeight: current ? 700 : 500,
-                color: current ? '#FFFFFF' : done ? '#D1D5DB' : '#6B7280',
-              }}>{s.short}</div>
             </div>
           );
         })}
+
+        {/* Progress line behind circles */}
+        <div style={{
+          position: 'absolute',
+          bottom: 11, left: '16.67%', right: '16.67%',
+          height: 3, background: '#1F2937', borderRadius: 999, zIndex: 0,
+        }}>
+          <div style={{
+            height: '100%', borderRadius: 999, background: '#10B981',
+            width: currentStep === 0 ? '0%' : currentStep === 1 ? '50%' : '100%',
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
+      </div>
+
+      {/* Labels */}
+      <div style={{ display: 'flex', marginTop: 7 }}>
+        {PIPELINE.map((s, i) => {
+          const done    = i < currentStep;
+          const current = i === currentStep;
+          return (
+            <div key={i} style={{
+              flex: 1, textAlign: 'center',
+              fontSize: 9, fontWeight: current ? 700 : 500, lineHeight: 1.3,
+              color: current ? '#FFFFFF' : done ? '#D1D5DB' : '#6B7280',
+            }}>{s.short}</div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── DeliveredCard — replaces step strip when delivered ───────────
+function DeliveredCard() {
+  return (
+    <div style={{
+      marginTop: 14,
+      borderRadius: 16, padding: '22px 16px', textAlign: 'center',
+      background: 'linear-gradient(135deg, #064E3B 0%, #065F46 100%)',
+      border: '1px solid #059669',
+      boxShadow: '0 4px 20px #05996920',
+    }}>
+      <div style={{ fontSize: 34, marginBottom: 8 }}>🎉</div>
+      <div style={{
+        fontSize: 17, fontWeight: 800, color: '#34D399',
+        fontFamily: "'Syne', sans-serif", marginBottom: 5,
+        letterSpacing: '-0.3px',
+      }}>Your order is delivered!</div>
+      <div style={{ fontSize: 13, color: '#6EE7B7' }}>
+        Hope you love it! ❤️
       </div>
     </div>
   );
@@ -139,6 +205,7 @@ function StepTimeline({ status }) {
 function TrackingCard({ order, isNew }) {
   const [copied, setCopied] = useState(false);
   const avatarBg    = getAvatarColor(order.name);
+  const isDelivered = order.status === 'Delivered';
   const hasTracking = !!order.trackingId;
 
   const handleCopy = async () => {
@@ -152,100 +219,109 @@ function TrackingCard({ order, isNew }) {
   return (
     <div style={{
       background: '#0D1117', border: '1px solid #1F2937',
-      borderRadius: 20, padding: '18px 18px 16px',
+      borderRadius: 20, overflow: 'hidden',
       animation: 'cardIn 0.4s ease both', position: 'relative',
     }}>
-      {isNew && (
-        <div style={{
-          position: 'absolute', top: 14, right: 14,
-          background: '#92400e', color: '#fcd34d',
-          fontSize: 10, fontWeight: 700, padding: '2px 9px',
-          borderRadius: 999, letterSpacing: '0.06em',
-        }}>NEW</div>
-      )}
+      {/* Top gradient accent line */}
+      <div style={{
+        height: 3,
+        background: isDelivered
+          ? 'linear-gradient(90deg, #059669, #34D399, #059669)'
+          : 'linear-gradient(90deg, #1D4ED8, #7C3AED, #DB2777)',
+      }} />
 
-      {/* Avatar + Name row */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: '50%', background: avatarBg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
-          fontFamily: "'Syne', sans-serif",
-        }}>{getInitials(order.name)}</div>
+      <div style={{ padding: '15px 18px 18px' }}>
+        {/* NEW badge */}
+        {isNew && (
+          <div style={{
+            position: 'absolute', top: 16, right: 14,
+            background: '#92400e', color: '#fcd34d',
+            fontSize: 10, fontWeight: 700, padding: '2px 9px',
+            borderRadius: 999, letterSpacing: '0.06em',
+          }}>NEW</div>
+        )}
 
-        <div style={{ minWidth: 0 }}>
+        {/* Avatar + Name + Order ID + Pincode */}
+        <div style={{ display: 'flex', gap: 13, alignItems: 'center' }}>
           <div style={{
-            fontWeight: 700, fontSize: 16, color: '#F9FAFB',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{order.name}</div>
-          <div style={{
-            fontSize: 12, color: '#6B7280', marginTop: 2,
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            {order.orderId && (
-              <span style={{ fontFamily: 'monospace', letterSpacing: '-0.3px' }}>{order.orderId}</span>
-            )}
-            {order.orderId && order.pincode && <span>·</span>}
-            {order.pincode && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                📍 <strong style={{ color: '#9CA3AF', fontWeight: 700 }}>{order.pincode}</strong>
-              </span>
-            )}
+            width: 46, height: 46, borderRadius: '50%', background: avatarBg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, fontWeight: 800, color: '#fff', flexShrink: 0,
+            fontFamily: "'Syne', sans-serif",
+          }}>{getInitials(order.name)}</div>
+
+          <div style={{ minWidth: 0 }}>
+            <div style={{
+              fontWeight: 800, fontSize: 18, color: '#F9FAFB',
+              fontFamily: "'Syne', sans-serif", letterSpacing: '-0.4px',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{order.name}</div>
+
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, marginTop: 4,
+            }}>
+              {order.orderId && (
+                <span style={{
+                  fontFamily: 'monospace', color: '#6B7280',
+                  fontSize: 12, letterSpacing: '-0.2px',
+                }}>{order.orderId}</span>
+              )}
+              {order.orderId && order.pincode && (
+                <span style={{ color: '#374151', fontSize: 11 }}>•</span>
+              )}
+              {order.pincode && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <span style={{ fontSize: 12 }}>📍</span>
+                  <span style={{
+                    fontWeight: 700, color: '#F9FAFB', fontSize: 14,
+                    letterSpacing: '0.3px',
+                  }}>{order.pincode}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Status pill */}
-      <StatusPill status={order.status || 'Order Created'} />
+        {/* Tracking ID coupon — shows when transit (above step strip) */}
+        {hasTracking && !isDelivered && (
+          <TrackingCoupon
+            trackingId={order.trackingId}
+            onCopy={handleCopy}
+            copied={copied}
+          />
+        )}
 
-      {/* Step timeline */}
-      <StepTimeline status={order.status} />
+        {/* Step strip OR delivered celebration */}
+        {isDelivered ? <DeliveredCard /> : <StepTimeline status={order.status} />}
 
-      {/* Tracking ID + copy */}
-      {order.trackingId && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: '#080d17', border: '1px solid #1a2035',
-          borderRadius: 10, padding: '8px 12px', marginTop: 14,
-        }}>
-          <span style={{
-            flex: 1, fontStyle: 'italic', fontWeight: 700,
-            fontSize: 13, color: '#A78BFA', letterSpacing: '0.4px',
-            fontFamily: 'monospace',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{order.trackingId}</span>
-
-          <button onClick={handleCopy} style={{
-            background: copied ? '#052e16' : '#1F2937',
-            color: copied ? '#4ade80' : '#9CA3AF',
-            border: 'none', borderRadius: 6, padding: '5px 11px',
-            fontSize: 11, cursor: 'pointer', fontWeight: 600,
-            transition: 'all 0.2s', flexShrink: 0,
+        {/* Green Live Tracking button — always visible */}
+        {order.trackingLink && (
+          <a href={order.trackingLink} target="_blank" rel="noreferrer" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            marginTop: 14, padding: '14px 20px', borderRadius: 14,
+            background: 'linear-gradient(135deg, #047857, #10B981)',
+            color: '#fff', fontSize: 15, fontWeight: 700,
+            textDecoration: 'none', letterSpacing: '-0.2px',
+            boxShadow: '0 6px 24px #10B98128',
+            border: '1px solid #34D39940',
             fontFamily: "'DM Sans', sans-serif",
           }}>
-            {copied ? '✓ Copied' : '📋 Copy'}
-          </button>
-        </div>
-      )}
-
-      {/* Big Live Tracking button */}
-      {order.trackingLink && (
-        <a href={order.trackingLink} target="_blank" rel="noreferrer" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          marginTop: 12, padding: '14px 20px', borderRadius: 14,
-          background: 'linear-gradient(135deg, #1a3a8f, #1D4ED8)',
-          color: '#fff', fontSize: 15, fontWeight: 700,
-          textDecoration: 'none', letterSpacing: '-0.2px',
-          boxShadow: '0 6px 24px #1D4ED835',
-          border: '1px solid #2563eb60',
-        }}>
-          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 10, height: 10, flexShrink: 0 }}>
-            <span style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', background: '#60A5FA', opacity: 0.5, animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#93C5FD' }} />
-          </span>
-          📍 Live Tracking
-        </a>
-      )}
+            <span style={{
+              position: 'relative', display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center',
+              width: 10, height: 10, flexShrink: 0,
+            }}>
+              <span style={{
+                position: 'absolute', width: '100%', height: '100%',
+                borderRadius: '50%', background: '#6EE7B7',
+                opacity: 0.6, animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite',
+              }} />
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#A7F3D0' }} />
+            </span>
+            📍 Live Tracking
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -431,39 +507,16 @@ export default function TrackingPage({ code, config }) {
                 ORDER TRACKING
               </div>
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-  <div style={{
-    display:'flex', alignItems:'center', gap:8,
-    padding:'6px 12px', background:'#0D1117',
-    border:'1px solid #1F2937', borderRadius:999,
-  }}>
-    <LiveDot />
-    <span style={{ fontSize:11, color:'#6B7280' }}>
-      {syncTime || 'Connecting'}
-    </span>
-  </div>
-
-  <button
-    onClick={() => fetchOrders(true)}
-    disabled={refreshing}
-    style={{
-      display:'flex', alignItems:'center', gap:6,
-      padding:'7px 16px',
-      background: refreshing ? '#1F2937' : '#1D4ED8',
-      border:'none', borderRadius:999,
-      color:'#fff', fontSize:12, fontWeight:600,
-      cursor: refreshing ? 'default' : 'pointer',
-      transition:'all 0.2s',
-      fontFamily:"'DM Sans',sans-serif",
-    }}
-  >
-    <span style={{
-      display:'inline-block',
-      animation: refreshing ? 'spin 0.8s linear infinite' : 'none',
-    }}>🔄</span>
-    {refreshing ? 'Refreshing…' : 'Refresh'}
-  </button>
-</div>
+            <div style={{
+              display:'flex', alignItems:'center', gap:8,
+              padding:'6px 12px', background:'#0D1117',
+              border:'1px solid #1F2937', borderRadius:999,
+            }}>
+              <LiveDot />
+              <span style={{ fontSize:11, color:'#6B7280' }}>
+                {syncTime || 'Connecting'}
+              </span>
+            </div>
           </div>
         </div>
       </header>
