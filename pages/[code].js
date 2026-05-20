@@ -55,6 +55,17 @@ const STATUS_MAP = {
   'Delivered': { icon: '✅', label: 'Delivered',  step: 2, color: '#10B981' },
 };
 
+// ─── timeAgo — computed client-side from timestamp ─────────────────
+function timeAgo(ts) {
+  if (!ts) return '';
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60)   return 'Just now';
+  if (s < 3600) { const m = Math.floor(s/60);    return m + ' min'  + (m > 1 ? 's' : '') + ' ago'; }
+  if (s < 86400){ const h = Math.floor(s/3600);  return h + ' hour' + (h > 1 ? 's' : '') + ' ago'; }
+  const d = Math.floor(s / 86400);
+  return d === 1 ? 'Yesterday' : d + ' days ago';
+}
+
 // ─── Avatar ────────────────────────────────────────────────────────
 function Avatar({ name }) {
   return (
@@ -70,44 +81,11 @@ function Avatar({ name }) {
   );
 }
 
-// ─── TrackingCoupon — white dashed coupon at top-right ─────────────
-function TrackingCoupon({ trackingId, onCopy, copied }) {
-  return (
-    <div style={{
-      flexShrink: 0,
-      background: '#FFFFFF',
-      border: '1.5px dashed #9CA3AF',
-      borderRadius: 10,
-      padding: '6px 10px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      minWidth: 100, maxWidth: 128,
-    }}>
-      <span style={{
-        fontFamily: 'monospace', fontWeight: 800, fontSize: 11,
-        color: '#111827', letterSpacing: '0.4px',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        maxWidth: '100%',
-      }}>{trackingId}</span>
-      <button onClick={onCopy} style={{
-        width: '100%', padding: '3px 0',
-        background: copied ? '#DCFCE7' : '#F3F4F6',
-        color: copied ? '#15803D' : '#6B7280',
-        border: 'none', borderRadius: 5,
-        fontSize: 10, fontWeight: 600, cursor: 'pointer',
-        fontFamily: "'DM Sans', sans-serif",
-        transition: 'all 0.2s',
-      }}>
-        {copied ? '✓ Copied!' : '📋 Copy ID'}
-      </button>
-    </div>
-  );
-}
-
 // ─── StepTimeline ──────────────────────────────────────────────────
 function StepTimeline({ status }) {
   const currentStep = STATUS_MAP[status]?.step ?? 0;
   return (
-    <div style={{ marginTop: 12 }}>
+    <div style={{ marginTop: 14 }}>
       <div style={{
         position: 'relative', height: 4,
         background: '#2D2A26', borderRadius: 999, margin: '0 6px',
@@ -148,30 +126,23 @@ function StepTimeline({ status }) {
   );
 }
 
-// ─── OrderCard ─────────────────────────────────────────────────────
+// ─── OrderCard — exact WT Frames structure ─────────────────────────
 function OrderCard({ order, index, isNew }) {
-  const [copied, setCopied] = useState(false);
   const info        = STATUS_MAP[order.status] || STATUS_MAP['Transit'];
   const isOnWay     = order.status === 'Transit';
   const isDelivered = order.status === 'Delivered';
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(order.trackingId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {}
-  };
+  const link        = order.trackingLink;
 
   return (
     <div
       style={{
         background: 'linear-gradient(135deg, #0D1117 0%, #111827 100%)',
         border: `1px solid ${isOnWay ? '#065F46' : '#1F2937'}`,
-        borderRadius: 20, padding: '14px 16px',
+        borderRadius: 20, padding: '18px 20px',
         position: 'relative', overflow: 'hidden',
         animation: `cardIn 0.5s cubic-bezier(0.16,1,0.3,1) ${index * 0.06}s both`,
         transition: 'border-color 0.3s, transform 0.2s',
+        cursor: 'default',
       }}
       onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
       onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
@@ -185,62 +156,49 @@ function OrderCard({ order, index, isNew }) {
       {/* NEW badge */}
       {isNew && (
         <div style={{
-          position: 'absolute', top: 10, right: 12,
+          position: 'absolute', top: 12, right: 12,
           padding: '2px 8px', borderRadius: 999,
           background: '#78350F', color: '#FCD34D',
           fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
-          zIndex: 1,
         }}>NEW</div>
       )}
 
-      {/* Main row: Avatar | Name+info | Tracking coupon */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      {/* Avatar + name row */}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
         <Avatar name={order.name} />
-
-        {/* Name + order ID + pin + status pill */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontSize: 16, fontWeight: 700, color: '#F9FAFB',
             fontFamily: "'Syne', sans-serif",
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            paddingRight: order.trackingId ? 0 : 48,
           }}>{order.name}</div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
             <span style={{ fontSize: 11, color: '#4B5563', fontFamily: 'monospace' }}>
               {order.orderId}
             </span>
-            <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#374151', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: '#F9FAFB', fontWeight: 600 }}>📍 {order.pincode}</span>
+            <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#374151' }} />
+            <span style={{ fontSize: 11, color: '#4B5563' }}>📍 {order.pincode}</span>
           </div>
 
           {/* Status pill — hidden when delivered */}
           {!isDelivered && (
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              marginTop: 8, padding: '4px 10px', borderRadius: 999,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              marginTop: 10, padding: '5px 12px', borderRadius: 999,
               border: `1px solid ${info.color}30`, background: info.color + '15',
             }}>
-              <span style={{ fontSize: 12 }}>{info.icon}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: info.color }}>{info.label}</span>
+              <span style={{ fontSize: 13 }}>{info.icon}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: info.color }}>{info.label}</span>
             </div>
           )}
         </div>
-
-        {/* Tracking ID coupon — top right, aligned with name, only when not delivered */}
-        {order.trackingId && !isDelivered && (
-          <TrackingCoupon
-            trackingId={order.trackingId}
-            onCopy={handleCopy}
-            copied={copied}
-          />
-        )}
       </div>
 
-      {/* Step timeline OR delivered celebration */}
+      {/* Step timeline or delivered celebration */}
       {isDelivered ? (
         <div style={{
-          marginTop: 12, padding: '18px 16px',
+          marginTop: 14, padding: '20px 16px',
           background: 'linear-gradient(135deg, #022c22 0%, #064E3B 50%, #065F46 100%)',
           border: '1px solid #059669', borderRadius: 16,
           textAlign: 'center', position: 'relative', overflow: 'hidden',
@@ -250,40 +208,42 @@ function OrderCard({ order, index, isNew }) {
             width: 120, height: 60, background: '#10B98130',
             borderRadius: '50%', filter: 'blur(20px)',
           }} />
-          <div style={{ fontSize: 32, marginBottom: 6 }}>🎉</div>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
           <div style={{
             fontSize: 16, fontWeight: 800, color: '#10B981',
-            fontFamily: "'Syne', sans-serif", letterSpacing: '-0.3px', marginBottom: 4,
+            fontFamily: "'Syne', sans-serif",
+            letterSpacing: '-0.3px', marginBottom: 6,
           }}>Your order is delivered!</div>
-          <div style={{ fontSize: 12, color: '#6EE7B7' }}>Hope you love it ❤️</div>
+          <div style={{ fontSize: 12, color: '#6EE7B7', lineHeight: 1.6 }}>
+            Hope you love it ❤️
+          </div>
         </div>
       ) : (
         <StepTimeline status={order.status} />
       )}
 
-      {/* Footer — last updated date + track button (always visible) */}
+      {/* Footer */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginTop: 10, paddingTop: 10, borderTop: '1px solid #0D1117',
+        marginTop: 12, paddingTop: 12, borderTop: '1px solid #0D1117',
       }}>
-        <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.02em' }}>
-          {order.shippedOn ? `Updated ${order.shippedOn}` : ''}
+        <span style={{
+          fontSize: 11, color: '#9CA3AF',
+          fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.02em',
+        }}>
+          Updated {timeAgo(order.shippedTs)}
         </span>
 
-        {/* Track button — always visible, muted when delivered */}
-        {order.trackingLink && (
+        {isOnWay && link && (
           <a
-            href={order.trackingLink}
+            href={link}
             target="_blank" rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 12px', borderRadius: 999, textDecoration: 'none',
-              background: isDelivered ? '#1F2937' : '#064E3B',
-              border: `1px solid ${isDelivered ? '#374151' : '#059669'}`,
-              color: isDelivered ? '#6B7280' : '#10B981',
-              fontSize: 11, fontWeight: 600,
-              transition: 'all 0.2s',
+              padding: '5px 12px', borderRadius: 999,
+              background: '#064E3B', border: '1px solid #059669',
+              color: '#10B981', fontSize: 11, fontWeight: 600, textDecoration: 'none',
             }}
           >
             📦 Track
