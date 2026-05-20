@@ -224,7 +224,7 @@ function OrderCard({ order, index, isNew }) {
 
       {/* Footer */}
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
         marginTop: 12, paddingTop: 12, borderTop: '1px solid #0D1117',
       }}>
       
