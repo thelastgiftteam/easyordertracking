@@ -262,19 +262,14 @@ function OCRPage() {
             s.id === slip.id ? { ...s, status: 'done', result: data.result } : s,
           ));
         } else {
+          const msg = [data.error, data.detail].filter(Boolean).join(' | ');
           setSlips(prev => prev.map(s =>
-            const msg = [data.error, data.detail].filter(Boolean).join(' | ');
-setSlips(prev => prev.map(s =>
-  s.id === slip.id ? { ...s, status: 'error', error: msg } : s,
-));
+            s.id === slip.id ? { ...s, status: 'error', error: msg } : s,
           ));
         }
       } catch {
         setSlips(prev => prev.map(s =>
-         const msg = [data.error, data.detail].filter(Boolean).join(' | ');
-setSlips(prev => prev.map(s =>
-  s.id === slip.id ? { ...s, status: 'error', error: msg } : s,
-));
+          s.id === slip.id ? { ...s, status: 'error', error: 'Network error' } : s,
         ));
       }
     }
