@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 
-const CSM_USER = 'csmstebin';
-const CSM_PASS = '11421';
+const CSM_USER = '1';
+const CSM_PASS = '1';
 
 function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
