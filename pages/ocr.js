@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 
+// ─── Credentials ──────────────────────────────────────────────────────────────
 const CSM_USER = '1';
 const CSM_PASS = '1';
 
+// ─── LoginPage ────────────────────────────────────────────────────────────────
 function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +33,7 @@ function LoginPage({ onLogin }) {
       fontFamily: "'DM Sans', sans-serif", padding: 24,
     }}>
       <div style={{ maxWidth: 380, width: '100%' }}>
+        {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
           <div style={{
@@ -42,6 +45,7 @@ function LoginPage({ onLogin }) {
           </div>
         </div>
 
+        {/* Card */}
         <form onSubmit={handleSubmit} style={{
           background: '#0D1117', border: '1px solid #1F2937',
           borderRadius: 20, padding: '32px 28px',
@@ -107,7 +111,7 @@ function LoginPage({ onLogin }) {
               width: '100%', padding: '13px', borderRadius: 12, border: 'none',
               background: loading ? '#374151' : 'linear-gradient(135deg, #059669, #10B981)',
               color: '#fff', fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "'DM Sans', sans-serif", transition: 'opacity 0.2s',
             }}
           >
             {loading ? 'Signing in…' : 'Sign In'}
@@ -122,6 +126,7 @@ function LoginPage({ onLogin }) {
   );
 }
 
+// ─── SlipCard ─────────────────────────────────────────────────────────────────
 function SlipCard({ slip, index, onUpdate, onRemove }) {
   const { preview, status, result, error } = slip;
 
@@ -153,18 +158,19 @@ function SlipCard({ slip, index, onUpdate, onRemove }) {
 
   return (
     <div style={{
-      background: '#0D1117',
-      border: `1px solid ${status === 'done' ? '#065F46' : status === 'error' ? '#7F1D1D' : '#1F2937'}`,
+      background: '#0D1117', border: `1px solid ${status === 'done' ? '#065F46' : status === 'error' ? '#7F1D1D' : '#1F2937'}`,
       borderRadius: 18, padding: '16px', position: 'relative',
       animation: 'cardIn 0.4s cubic-bezier(0.16,1,0.3,1) both',
     }}>
+      {/* Top accent */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 2, borderRadius: '18px 18px 0 0',
-        background: status === 'done'  ? 'linear-gradient(90deg,#10B98160,transparent)' :
+        background: status === 'done' ? 'linear-gradient(90deg,#10B98160,transparent)' :
                     status === 'error' ? 'linear-gradient(90deg,#EF444460,transparent)' :
-                                        'linear-gradient(90deg,#F59E0B60,transparent)',
+                    'linear-gradient(90deg,#F59E0B60,transparent)',
       }} />
 
+      {/* Remove button */}
       <button
         onClick={() => onRemove(index)}
         style={{
@@ -176,6 +182,7 @@ function SlipCard({ slip, index, onUpdate, onRemove }) {
       >✕</button>
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        {/* Image preview */}
         <div style={{
           width: 72, height: 72, borderRadius: 10, overflow: 'hidden',
           background: '#111827', flexShrink: 0, border: '1px solid #1F2937',
@@ -184,12 +191,11 @@ function SlipCard({ slip, index, onUpdate, onRemove }) {
           <img src={preview} alt={`Slip ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
+        {/* Status + fields */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{
-              fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-              color: status === 'done' ? '#10B981' : status === 'error' ? '#EF4444' : '#F59E0B',
-            }}>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+              color: status === 'done' ? '#10B981' : status === 'error' ? '#EF4444' : '#F59E0B' }}>
               {status === 'processing' ? '⏳ READING…' :
                status === 'done'       ? '✓ EXTRACTED' :
                status === 'error'      ? '✗ FAILED'    : '⏸ PENDING'}
@@ -203,10 +209,11 @@ function SlipCard({ slip, index, onUpdate, onRemove }) {
             </div>
           )}
 
+          {/* Editable fields — always shown */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {field('name',       'RECIPIENT NAME', 'e.g. Rahul Sharma')}
-            {field('pincode',    'PINCODE',        '6-digit PIN')}
-            {field('trackingId', 'TRACKING ID',    'AWB / Consignment')}
+            {field('name',       'RECIPIENT NAME',  'e.g. Rahul Sharma')}
+            {field('pincode',    'PINCODE',         '6-digit PIN')}
+            {field('trackingId', 'TRACKING ID',     'AWB / Consignment')}
           </div>
         </div>
       </div>
@@ -214,12 +221,14 @@ function SlipCard({ slip, index, onUpdate, onRemove }) {
   );
 }
 
+// ─── OCRPage ──────────────────────────────────────────────────────────────────
 function OCRPage() {
   const [slips,    setSlips]    = useState([]);
   const [dragging, setDragging] = useState(false);
   const [copied,   setCopied]   = useState(false);
-  const fileRef = useRef();
+  const fileRef  = useRef();
 
+  // Convert file → base64
   function toBase64(file) {
     return new Promise((resolve, reject) => {
       const r = new FileReader();
@@ -245,7 +254,8 @@ function OCRPage() {
 
     setSlips(prev => [...prev, ...newSlips]);
 
-    for (const slip of newSlips) {
+    // Extract all slips in parallel
+    await Promise.all(newSlips.map(async (slip) => {
       setSlips(prev => prev.map(s => s.id === slip.id ? { ...s, status: 'processing' } : s));
 
       try {
@@ -272,7 +282,7 @@ function OCRPage() {
           s.id === slip.id ? { ...s, status: 'error', error: 'Network error' } : s,
         ));
       }
-    }
+    }));
   }
 
   const onDrop = useCallback(e => {
@@ -292,15 +302,21 @@ function OCRPage() {
     setSlips(prev => prev.filter((_, i) => i !== index));
   }
 
+  function clearAll() {
+    setSlips([]);
+  }
+
+  // Build tab-separated table for copy-paste into Google Sheets
   function buildTable() {
-   return slips
+    return slips
       .filter(s => s.result?.name || s.result?.trackingId)
       .map(s => `${s.result.name}\t${s.result.pincode}\t${s.result.trackingId}`)
       .join('\n');
   }
 
   function copyTable() {
-    navigator.clipboard.writeText(buildTable()).then(() => {
+    const table = buildTable();
+    navigator.clipboard.writeText(table).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
@@ -310,7 +326,11 @@ function OCRPage() {
   const hasData   = slips.some(s => s.result?.name || s.result?.trackingId);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', fontFamily: "'DM Sans', sans-serif", paddingBottom: 80 }}>
+    <div style={{
+      minHeight: '100vh', background: '#030712',
+      fontFamily: "'DM Sans', sans-serif", paddingBottom: 80,
+    }}>
+      {/* Header */}
       <header style={{
         background: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid #0D1117', position: 'sticky', top: 0, zIndex: 100,
@@ -318,15 +338,21 @@ function OCRPage() {
         <div style={{ maxWidth: 700, margin: '0 auto', padding: '14px 20px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Syne', sans-serif",
-              letterSpacing: '-0.4px', color: '#F9FAFB' }}>OCR Slip Reader</div>
-            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>EasyOrderTracking · CSM Tool</div>
+            <div style={{
+              fontSize: 17, fontWeight: 800, fontFamily: "'Syne', sans-serif",
+              letterSpacing: '-0.4px', color: '#F9FAFB',
+            }}>OCR Slip Reader</div>
+            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>
+              EasyOrderTracking · CSM Tool
+            </div>
           </div>
           {slips.length > 0 && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: '#6B7280' }}>{doneCount}/{slips.length} read</span>
+              <span style={{ fontSize: 12, color: '#6B7280' }}>
+                {doneCount}/{slips.length} read
+              </span>
               <button
-                onClick={() => setSlips([])}
+                onClick={clearAll}
                 style={{
                   padding: '6px 14px', borderRadius: 999, border: '1px solid #1F2937',
                   background: 'none', color: '#9CA3AF', fontSize: 12, cursor: 'pointer',
@@ -339,6 +365,8 @@ function OCRPage() {
       </header>
 
       <main style={{ maxWidth: 700, margin: '0 auto', padding: '24px 20px' }}>
+
+        {/* Drop zone */}
         <div
           onClick={() => fileRef.current?.click()}
           onDragOver={e => { e.preventDefault(); setDragging(true); }}
@@ -356,46 +384,71 @@ function OCRPage() {
             Drop tracking slip photos here
           </div>
           <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
-            or click to select — JPG, PNG, WEBP
+            or click to select images — JPG, PNG, WEBP
           </div>
           <div style={{
             display: 'inline-block', padding: '10px 24px', borderRadius: 999,
             background: 'linear-gradient(135deg,#059669,#10B981)',
             color: '#fff', fontSize: 13, fontWeight: 700,
-          }}>Upload Slips</div>
+          }}>
+            Upload Slips
+          </div>
           <input
-            ref={fileRef} type="file" accept="image/*" multiple
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
             style={{ display: 'none' }}
             onChange={e => { processFiles(e.target.files); e.target.value = ''; }}
           />
         </div>
 
+        {/* Slip cards */}
         {slips.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
             {slips.map((slip, i) => (
-              <SlipCard key={slip.id} slip={slip} index={i} onUpdate={updateField} onRemove={removeSlip} />
+              <SlipCard
+                key={slip.id}
+                slip={slip}
+                index={i}
+                onUpdate={updateField}
+                onRemove={removeSlip}
+              />
             ))}
           </div>
         )}
 
+        {/* Copy-paste table */}
         {hasData && (
-          <div style={{ background: '#0D1117', border: '1px solid #1F2937', borderRadius: 18, padding: '20px' }}>
+          <div style={{
+            background: '#0D1117', border: '1px solid #1F2937', borderRadius: 18, padding: '20px',
+          }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#F9FAFB' }}>Ready to paste into Google Sheets</div>
-                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>Click copy → open your Sheet → paste (Ctrl+V)</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F9FAFB' }}>
+                  Ready to paste into Google Sheets
+                </div>
+                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>
+                  Click copy → open your Sheet → paste (Ctrl+V)
+                </div>
               </div>
               <button
                 onClick={copyTable}
                 style={{
                   padding: '10px 22px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                  background: copied ? 'linear-gradient(135deg,#059669,#10B981)' : 'linear-gradient(135deg,#1D4ED8,#3B82F6)',
+                  background: copied
+                    ? 'linear-gradient(135deg,#059669,#10B981)'
+                    : 'linear-gradient(135deg,#1D4ED8,#3B82F6)',
                   color: '#fff', fontSize: 13, fontWeight: 700,
-                  fontFamily: "'DM Sans', sans-serif", transition: 'background 0.3s', flexShrink: 0,
+                  fontFamily: "'DM Sans', sans-serif", transition: 'background 0.3s',
+                  flexShrink: 0,
                 }}
-              >{copied ? '✓ Copied!' : '📋 Copy Table'}</button>
+              >
+                {copied ? '✓ Copied!' : '📋 Copy Table'}
+              </button>
             </div>
 
+            {/* Preview table */}
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -409,7 +462,7 @@ function OCRPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {slips.filter(s => s.result?.name || s.result?.trackingId).map(slip => (
+                  {slips.filter(s => s.result?.name || s.result?.trackingId).map((slip, i) => (
                     <tr key={slip.id} style={{ borderBottom: '1px solid #111827' }}>
                       <td style={{ padding: '9px 12px', color: slip.result.name ? '#F9FAFB' : '#4B5563' }}>
                         {slip.result.name || '—'}
@@ -428,20 +481,23 @@ function OCRPage() {
           </div>
         )}
 
+        {/* Empty state hint */}
         {slips.length === 0 && (
           <div style={{ textAlign: 'center', paddingTop: 20 }}>
             <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.8 }}>
               Upload photos of courier slips (DTDC, India Post, Delhivery…)<br />
-              Gemini AI extracts <strong style={{ color: '#6B7280' }}>name · pincode · tracking ID</strong> automatically.<br />
-              Review, edit if needed, then copy the table into Google Sheets.
+              Gemini AI will extract <strong style={{ color: '#6B7280' }}>name · pincode · tracking ID</strong> automatically.<br />
+              You review, edit if needed, then copy the table to Google Sheets.
             </div>
           </div>
         )}
+
       </main>
     </div>
   );
 }
 
+// ─── Root ─────────────────────────────────────────────────────────────────────
 export default function OCRRoute() {
   const [authed, setAuthed] = useState(false);
 
