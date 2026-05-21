@@ -293,12 +293,10 @@ function OCRPage() {
   }
 
   function buildTable() {
-    const header = 'Name\tPincode\tTracking ID';
-    const rows   = slips
+   return slips
       .filter(s => s.result?.name || s.result?.trackingId)
       .map(s => `${s.result.name}\t${s.result.pincode}\t${s.result.trackingId}`)
       .join('\n');
-    return `${header}\n${rows}`;
   }
 
   function copyTable() {
