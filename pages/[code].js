@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 
-const BG_REFRESH_MS = 5 * 60 * 1000; // silent background refresh every 5 min
+const BG_REFRESH_MS = 5 * 60 * 1000;
 
 // ─── Static generation ────────────────────────────────────────────
 export async function getStaticPaths() {
@@ -21,6 +21,91 @@ export async function getStaticProps({ params }) {
     return { notFound: true, revalidate: 60 };
   }
 }
+
+// ─── Localization ─────────────────────────────────────────────────
+const LANGS = [
+  { code: 'en', label: 'EN', name: 'English' },
+  { code: 'ml', label: 'മല', name: 'Malayalam' },
+  { code: 'ta', label: 'த',  name: 'Tamil' },
+  { code: 'hi', label: 'हि', name: 'Hindi' },
+  { code: 'kn', label: 'ಕ',  name: 'Kannada' },
+  { code: 'te', label: 'తె', name: 'Telugu' },
+];
+
+const T = {
+  en: {
+    orderTracking:   'ORDER TRACKING',
+    tapToRefresh:    'Tap to refresh',
+    updating:        'Updating…',
+    searchPlaceholder: 'Search by name or order ID...',
+    liveOrders:      'LIVE ORDERS',
+    results:         n => `${n} RESULT${n !== 1 ? 'S' : ''}`,
+    noOrders:        'No active orders right now',
+    checkBackSoon:   'Check back soon',
+    noResultsFor:    q => `No results for "${q}"`,
+    tryDifferent:    'Try a different name or order ID',
+  },
+  ml: {
+    orderTracking:   'ഓർഡർ ട്രാക്കിംഗ്',
+    tapToRefresh:    'പുതുക്കാൻ ടാപ്പ് ചെയ്യുക',
+    updating:        'അപ്ഡേറ്റ് ചെയ്യുന്നു…',
+    searchPlaceholder: 'പേര് അല്ലെങ്കിൽ ഓർഡർ ID തിരയുക...',
+    liveOrders:      'തത്സമയ ഓർഡറുകൾ',
+    results:         n => `${n} ഫലം`,
+    noOrders:        'ഇപ്പോൾ സജീവ ഓർഡറുകൾ ഇല്ല',
+    checkBackSoon:   'പിന്നീട് വീണ്ടും നോക്കൂ',
+    noResultsFor:    q => `"${q}" ന് ഫലമൊന്നുമില്ല`,
+    tryDifferent:    'മറ്റൊരു പേര് അല്ലെങ്കിൽ ID ഉപയോഗിക്കുക',
+  },
+  ta: {
+    orderTracking:   'ஆர்டர் கண்காணிப்பு',
+    tapToRefresh:    'புதுப்பிக்க தட்டவும்',
+    updating:        'புதுப்பிக்கிறது…',
+    searchPlaceholder: 'பெயர் அல்லது ஆர்டர் ID தேடுக...',
+    liveOrders:      'நேரடி ஆர்டர்கள்',
+    results:         n => `${n} முடிவு`,
+    noOrders:        'இப்போது செயலில் உள்ள ஆர்டர்கள் இல்லை',
+    checkBackSoon:   'சற்று நேரம் கழித்து பாருங்கள்',
+    noResultsFor:    q => `"${q}" க்கு முடிவு இல்லை`,
+    tryDifferent:    'வேறு பெயர் அல்லது ID முயற்சிக்கவும்',
+  },
+  hi: {
+    orderTracking:   'ऑर्डर ट्रैकिंग',
+    tapToRefresh:    'रिफ्रेश करने के लिए टैप करें',
+    updating:        'अपडेट हो रहा है…',
+    searchPlaceholder: 'नाम या ऑर्डर ID खोजें...',
+    liveOrders:      'लाइव ऑर्डर',
+    results:         n => `${n} परिणाम`,
+    noOrders:        'अभी कोई सक्रिय ऑर्डर नहीं',
+    checkBackSoon:   'थोड़ी देर बाद देखें',
+    noResultsFor:    q => `"${q}" के लिए कोई परिणाम नहीं`,
+    tryDifferent:    'कोई अलग नाम या ID आज़माएं',
+  },
+  kn: {
+    orderTracking:   'ಆರ್ಡರ್ ಟ್ರ್ಯಾಕಿಂಗ್',
+    tapToRefresh:    'ರಿಫ್ರೆಶ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ',
+    updating:        'ನವೀಕರಿಸಲಾಗುತ್ತಿದೆ…',
+    searchPlaceholder: 'ಹೆಸರು ಅಥವಾ ಆರ್ಡರ್ ID ಹುಡುಕಿ...',
+    liveOrders:      'ನೇರ ಆರ್ಡರ್‌ಗಳು',
+    results:         n => `${n} ಫಲಿತಾಂಶ`,
+    noOrders:        'ಇದೀಗ ಸಕ್ರಿಯ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ',
+    checkBackSoon:   'ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ನೋಡಿ',
+    noResultsFor:    q => `"${q}" ಗೆ ಫಲಿತಾಂಶಗಳಿಲ್ಲ`,
+    tryDifferent:    'ಬೇರೆ ಹೆಸರು ಅಥವಾ ID ಪ್ರಯತ್ನಿಸಿ',
+  },
+  te: {
+    orderTracking:   'ఆర్డర్ ట్రాకింగ్',
+    tapToRefresh:    'రిఫ్రెష్ చేయడానికి నొక్కండి',
+    updating:        'అప్‌డేట్ అవుతోంది…',
+    searchPlaceholder: 'పేరు లేదా ఆర్డర్ ID వెతకండి...',
+    liveOrders:      'లైవ్ ఆర్డర్లు',
+    results:         n => `${n} ఫలితాలు`,
+    noOrders:        'ప్రస్తుతం చురుకైన ఆర్డర్లు లేవు',
+    checkBackSoon:   'కొంత సేపటికి మళ్ళీ చూడండి',
+    noResultsFor:    q => `"${q}" కి ఫలితాలు లేవు`,
+    tryDifferent:    'వేరే పేరు లేదా ID ప్రయత్నించండి',
+  },
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────
 function getInitials(name = '') {
@@ -43,28 +128,10 @@ function LiveDot() {
   );
 }
 
-// ─── Pipeline ─────────────────────────────────────────────────────
-const PIPELINE = [
-  { key: 'Order Created', label: 'Order Created' },
-  { key: 'Transit',       label: 'On the Way'    },
-  { key: 'Delivered',     label: 'Delivered'     },
-];
-
-const STATUS_MAP = {
-  'Transit':   { icon: '🚚', label: 'On the Way', step: 1, color: '#60A5FA' },
-  'Delivered': { icon: '✅', label: 'Delivered',  step: 2, color: '#10B981' },
+const ACCENT = {
+  'Transit':   '#60A5FA',
+  'Delivered': '#10B981',
 };
-
-// ─── timeAgo — computed client-side from timestamp ─────────────────
-function timeAgo(ts) {
-  if (!ts) return '';
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60)   return 'Just now';
-  if (s < 3600) { const m = Math.floor(s/60);    return m + ' min'  + (m > 1 ? 's' : '') + ' ago'; }
-  if (s < 86400){ const h = Math.floor(s/3600);  return h + ' hour' + (h > 1 ? 's' : '') + ' ago'; }
-  const d = Math.floor(s / 86400);
-  return d === 1 ? 'Yesterday' : d + ' days ago';
-}
 
 // ─── Avatar ────────────────────────────────────────────────────────
 function Avatar({ name }) {
@@ -81,71 +148,7 @@ function Avatar({ name }) {
   );
 }
 
-// ─── StepTimeline ──────────────────────────────────────────────────
-function StepTimeline({ status }) {
-  const currentStep = STATUS_MAP[status]?.step ?? 0;
-  return (
-    <div style={{ marginTop: 14 }}>
-      <div style={{
-        position: 'relative', height: 4,
-        background: '#2D2A26', borderRadius: 999, margin: '0 6px',
-      }}>
-        <div style={{
-          position: 'absolute', height: '100%',
-          width: `${(currentStep / (PIPELINE.length - 1)) * 100}%`,
-          background: '#10B981', borderRadius: 999, transition: 'width 0.4s ease',
-        }} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-        {PIPELINE.map((s, i) => {
-          const done    = i < currentStep;
-          const current = i === currentStep;
-          return (
-            <div key={s.key} style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{
-                width: current ? 26 : 20, height: current ? 26 : 20,
-                margin: '0 auto', borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700, color: '#FFFFFF',
-                background: done ? '#10B981' : current ? '#F59E0B' : '#374151',
-                boxShadow: current ? '0 0 0 4px #F59E0B20' : 'none',
-                transition: 'all 0.3s ease',
-              }}>
-                {done ? '✓' : i + 1}
-              </div>
-              <div style={{
-                marginTop: 6, fontSize: 10,
-                fontWeight: current ? 700 : 500,
-                color: current ? '#FFFFFF' : done ? '#D1D5DB' : '#6B7280',
-              }}>{s.label}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── OrderCard — exact WT Frames structure ─────────────────────────
-const ACCENT = {
-  'Transit':   '#60A5FA',
-  'Delivered': '#10B981',
-};
-
-function Avatar({ name }) {
-  return (
-    <div style={{
-      width: 44, height: 44, borderRadius: '50%',
-      background: getAvatarColor(name),
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
-      fontFamily: "'Syne', sans-serif", letterSpacing: '-0.5px',
-    }}>
-      {getInitials(name)}
-    </div>
-  );
-}
-
+// ─── OrderCard ─────────────────────────────────────────────────────
 function OrderCard({ order, index, isNew }) {
   const [copied, setCopied] = useState(false);
   const isDelivered = order.status === 'Delivered';
@@ -174,11 +177,13 @@ function OrderCard({ order, index, isNew }) {
       onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
       onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
     >
+      {/* Top accent line */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 2,
         background: `linear-gradient(90deg, ${accentColor}80, ${accentColor}20, transparent)`,
       }} />
 
+      {/* NEW badge */}
       {isNew && (
         <div style={{
           position: 'absolute', top: 12, right: 12,
@@ -188,6 +193,7 @@ function OrderCard({ order, index, isNew }) {
         }}>NEW</div>
       )}
 
+      {/* Avatar + name */}
       <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <Avatar name={order.name} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -209,10 +215,12 @@ function OrderCard({ order, index, isNew }) {
         </div>
       </div>
 
+      {/* Footer */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginTop: 12, paddingTop: 12, borderTop: '1px solid #1A2030',
       }}>
+        {/* Copyable tracking ID */}
         <button
           onClick={copyId}
           style={{
@@ -220,7 +228,8 @@ function OrderCard({ order, index, isNew }) {
             background: 'none', border: '1px solid #1F2937',
             borderRadius: 8, padding: '5px 10px', cursor: trackingId ? 'pointer' : 'default',
             color: copied ? '#10B981' : '#6B7280',
-            fontSize: 11, fontFamily: 'monospace', transition: 'color 0.2s, border-color 0.2s',
+            fontSize: 11, fontFamily: 'monospace',
+            transition: 'color 0.2s, border-color 0.2s',
           }}
           onMouseEnter={e => { if (trackingId) e.currentTarget.style.borderColor = '#374151'; }}
           onMouseLeave={e => e.currentTarget.style.borderColor = '#1F2937'}
@@ -248,6 +257,7 @@ function OrderCard({ order, index, isNew }) {
     </div>
   );
 }
+
 // ─── BottomBar ────────────────────────────────────────────────────
 function BottomBar({ bar }) {
   if (!bar || !bar.text || bar.active === false) return null;
@@ -303,7 +313,6 @@ function SuspendedPage({ brandName }) {
             padding:'4px 14px', fontSize:11, fontWeight:700,
             color:'#fbbf24', letterSpacing:'0.08em', marginBottom:18,
           }}>SERVICE PAUSED</div>
-
           <p style={{ color:'#D1D5DB', fontSize:15, lineHeight:1.7, marginBottom:16 }}>
             Order tracking for this business is temporarily unavailable.
           </p>
@@ -320,6 +329,66 @@ function SuspendedPage({ brandName }) {
   );
 }
 
+// ─── LangPicker ───────────────────────────────────────────────────
+function LangPicker({ lang, setLang }) {
+  const [open, setOpen] = useState(false);
+  const current = LANGS.find(l => l.code === lang) || LANGS[0];
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '6px 10px', background: '#0D1117',
+          border: '1px solid #1F2937', borderRadius: 999,
+          cursor: 'pointer', color: '#F9FAFB',
+          fontFamily: "'DM Sans',sans-serif", fontSize: 12, fontWeight: 600,
+        }}
+      >
+        <span style={{ fontSize: 13 }}>🌐</span>
+        <span>{current.label}</span>
+      </button>
+
+      {open && (
+        <>
+          {/* backdrop */}
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 200 }}
+            onClick={() => setOpen(false)}
+          />
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 201,
+            background: '#0D1117', border: '1px solid #1F2937', borderRadius: 14,
+            overflow: 'hidden', minWidth: 140,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          }}>
+            {LANGS.map(l => (
+              <button
+                key={l.code}
+                onClick={() => { setLang(l.code); setOpen(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '10px 14px', background: 'none',
+                  border: 'none', borderBottom: '1px solid #111827',
+                  cursor: 'pointer', textAlign: 'left',
+                  color: l.code === lang ? '#10B981' : '#D1D5DB',
+                  fontFamily: "'DM Sans',sans-serif", fontSize: 13,
+                  fontWeight: l.code === lang ? 700 : 400,
+                }}
+              >
+                <span style={{ width: 22, textAlign: 'center', fontSize: 13, fontWeight: 700 }}>{l.label}</span>
+                <span>{l.name}</span>
+                {l.code === lang && <span style={{ marginLeft: 'auto', fontSize: 12 }}>✓</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────
 export default function TrackingPage({ code, config }) {
   const [orders,    setOrders]    = useState([]);
@@ -328,6 +397,18 @@ export default function TrackingPage({ code, config }) {
   const [error,     setError]     = useState(null);
   const [search,    setSearch]    = useState('');
   const [syncTime,  setSyncTime]  = useState('');
+  const [lang,      setLang]      = useState('en');
+
+  // Persist language choice
+  useEffect(() => {
+    const saved = typeof localStorage !== 'undefined' && localStorage.getItem('eot_lang');
+    if (saved && T[saved]) setLang(saved);
+  }, []);
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem('eot_lang', lang);
+  }, [lang]);
+
+  const t = T[lang] || T.en;
 
   const fetchOrders = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -346,7 +427,6 @@ export default function TrackingPage({ code, config }) {
     }
   }, [code]);
 
-  // Initial load + silent background refresh every 5 min
   useEffect(() => {
     fetchOrders();
     const iv = setInterval(() => fetchOrders(false), BG_REFRESH_MS);
@@ -359,7 +439,6 @@ export default function TrackingPage({ code, config }) {
     return o.name?.toLowerCase().includes(q) || o.orderId?.toLowerCase().includes(q);
   });
 
-  // ── Suspended state ──
   if (config?.suspended) {
     return (
       <>
@@ -426,33 +505,38 @@ export default function TrackingPage({ code, config }) {
                 WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
               }}>{brandName.toUpperCase()}</div>
               <div style={{ fontSize:12, color:'#FFFFFF', letterSpacing:'0.08em', marginTop:1 }}>
-                ORDER TRACKING
+                {t.orderTracking}
               </div>
             </div>
-            <button
-              onClick={() => fetchOrders(true)}
-              disabled={refreshing}
-              style={{
-                display:'flex', alignItems:'center', gap:8,
-                padding:'6px 12px', background:'#0D1117',
-                border:'1px solid #1F2937', borderRadius:999,
-                cursor: refreshing ? 'default' : 'pointer',
-                color:'inherit', fontFamily:"'DM Sans',sans-serif",
-              }}
-            >
-              {refreshing
-                ? <span style={{ fontSize:11, display:'inline-block', animation:'spin 0.8s linear infinite' }}>🔄</span>
-                : <LiveDot />
-              }
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:1 }}>
-                <span style={{ fontSize:11, color:'#6B7280', lineHeight:1 }}>
-                  {refreshing ? 'Updating…' : (syncTime || '–– : ––')}
-                </span>
-                {!refreshing && (
-                  <span style={{ fontSize:9, color:'#374151', lineHeight:1 }}>Tap to refresh</span>
-                )}
-              </div>
-            </button>
+
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <LangPicker lang={lang} setLang={setLang} />
+
+              <button
+                onClick={() => fetchOrders(true)}
+                disabled={refreshing}
+                style={{
+                  display:'flex', alignItems:'center', gap:8,
+                  padding:'6px 12px', background:'#0D1117',
+                  border:'1px solid #1F2937', borderRadius:999,
+                  cursor: refreshing ? 'default' : 'pointer',
+                  color:'inherit', fontFamily:"'DM Sans',sans-serif",
+                }}
+              >
+                {refreshing
+                  ? <span style={{ fontSize:11, display:'inline-block', animation:'spin 0.8s linear infinite' }}>🔄</span>
+                  : <LiveDot />
+                }
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:1 }}>
+                  <span style={{ fontSize:11, color:'#FFFFFF', lineHeight:1 }}>
+                    {refreshing ? t.updating : (syncTime || '–– : ––')}
+                  </span>
+                  {!refreshing && (
+                    <span style={{ fontSize:9, color:'#FFFFFF', lineHeight:1 }}>{t.tapToRefresh}</span>
+                  )}
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -470,7 +554,7 @@ export default function TrackingPage({ code, config }) {
               <input
                 type="text" value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search by name or order ID..."
+                placeholder={t.searchPlaceholder}
                 style={{
                   width:'100%', padding:'14px 16px 14px 46px',
                   background:'#FFFFFF', border:'1px solid #E5E7EB',
@@ -497,7 +581,7 @@ export default function TrackingPage({ code, config }) {
         {loading && (
           <div style={{ display:'flex', flexDirection:'column', gap:12, marginTop:8 }}>
             {[1,2,3].map(i => (
-              <div key={i} className="skeleton" style={{ height:170, opacity: 1 - i * 0.2 }} />
+              <div key={i} className="skeleton" style={{ height:120, opacity: 1 - i * 0.2 }} />
             ))}
           </div>
         )}
@@ -519,7 +603,7 @@ export default function TrackingPage({ code, config }) {
             alignItems:'center', marginBottom:12, marginTop:8,
           }}>
             <span style={{ fontSize:11, color:'#FFFFFF', letterSpacing:'0.08em', fontWeight:600 }}>
-              {search ? `${filtered.length} RESULT${filtered.length !== 1 ? 'S' : ''}` : 'LIVE ORDERS'}
+              {search ? t.results(filtered.length) : t.liveOrders}
             </span>
           </div>
         )}
@@ -529,10 +613,10 @@ export default function TrackingPage({ code, config }) {
           <div style={{ textAlign:'center', padding:'64px 0', animation:'fadeIn 0.4s ease' }}>
             <div style={{ fontSize:48, marginBottom:16 }}>{search ? '🔍' : '📦'}</div>
             <div style={{ fontSize:18, color:'#FFFFFF', fontWeight:600 }}>
-              {search ? `No results for "${search}"` : 'No active orders right now'}
+              {search ? t.noResultsFor(search) : t.noOrders}
             </div>
             <div style={{ fontSize:14, color:'#6B7280', marginTop:8 }}>
-              {search ? 'Try a different name or order ID' : 'Check back soon'}
+              {search ? t.tryDifferent : t.checkBackSoon}
             </div>
           </div>
         )}
