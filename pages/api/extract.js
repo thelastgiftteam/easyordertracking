@@ -42,40 +42,43 @@ Rules:
 - If a field is not clearly visible, return an empty string ""
 - Do not include any explanation or extra text`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Try models in order — first available wins
+  const MODELS = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash',
+  ];
+
+  let geminiRes, lastErr;
+  for (const model of MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    try {
+      geminiRes = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType || 'image/jpeg', data: image } },
+            ],
+          }],
+          generationConfig: { temperature: 0 },
+        }),
+      });
+      if (geminiRes.ok) break;
+      lastErr = await geminiRes.text();
+      console.error(`Model ${model} failed:`, lastErr);
+    } catch (e) {
+      lastErr = e.message;
+    }
+  }
+
+  if (!geminiRes || !geminiRes.ok) {
+    return res.status(500).json({ error: 'Gemini API error', detail: lastErr });
+  }
 
   try {
-    const geminiRes = await fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType || 'image/jpeg', data: image } },
-          ],
-        }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'object',
-            properties: {
-              name:       { type: 'string' },
-              pincode:    { type: 'string' },
-              trackingId: { type: 'string' },
-            },
-            required: ['name', 'pincode', 'trackingId'],
-          },
-        },
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text();
-      console.error('Gemini error:', err);
-      return res.status(500).json({ error: 'Gemini API error', detail: err });
-    }
-
     const data = await geminiRes.json();
     const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -83,7 +86,9 @@ Rules:
       return res.status(500).json({ error: 'Gemini returned no content', detail: data });
     }
 
-    const result = JSON.parse(raw);
+    // Strip markdown code fences if present
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    const result  = JSON.parse(cleaned);
 
     return res.status(200).json({
       success: true,
@@ -94,7 +99,7 @@ Rules:
       },
     });
   } catch (err) {
-    console.error('Extraction error:', err);
-    return res.status(500).json({ error: 'Extraction failed', detail: err.message });
+    console.error('Parse error:', err);
+    return res.status(500).json({ error: 'Could not parse Gemini response', detail: err.message });
   }
 }
