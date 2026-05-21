@@ -127,33 +127,58 @@ function StepTimeline({ status }) {
 }
 
 // ─── OrderCard — exact WT Frames structure ─────────────────────────
+const ACCENT = {
+  'Transit':   '#60A5FA',
+  'Delivered': '#10B981',
+};
+
+function Avatar({ name }) {
+  return (
+    <div style={{
+      width: 44, height: 44, borderRadius: '50%',
+      background: getAvatarColor(name),
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
+      fontFamily: "'Syne', sans-serif", letterSpacing: '-0.5px',
+    }}>
+      {getInitials(name)}
+    </div>
+  );
+}
+
 function OrderCard({ order, index, isNew }) {
-  const info        = STATUS_MAP[order.status] || STATUS_MAP['Transit'];
-  const isOnWay     = order.status === 'Transit';
+  const [copied, setCopied] = useState(false);
   const isDelivered = order.status === 'Delivered';
+  const accentColor = ACCENT[order.status] || '#374151';
   const link        = order.trackingLink;
+  const trackingId  = order.trackingId || order.orderId || '';
+
+  function copyId() {
+    if (!trackingId) return;
+    navigator.clipboard.writeText(trackingId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <div
       style={{
         background: 'linear-gradient(135deg, #0D1117 0%, #111827 100%)',
-        border: `1px solid ${isOnWay ? '#065F46' : '#1F2937'}`,
-        borderRadius: 20, padding: '18px 20px',
+        border: `1px solid ${isDelivered ? '#065F46' : '#1F2937'}`,
+        borderRadius: 20, padding: '16px 18px',
         position: 'relative', overflow: 'hidden',
         animation: `cardIn 0.5s cubic-bezier(0.16,1,0.3,1) ${index * 0.06}s both`,
-        transition: 'border-color 0.3s, transform 0.2s',
-        cursor: 'default',
+        transition: 'transform 0.2s',
       }}
       onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
       onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
     >
-      {/* Top accent line */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-        background: `linear-gradient(90deg, ${info.color}80, ${info.color}20, transparent)`,
+        background: `linear-gradient(90deg, ${accentColor}80, ${accentColor}20, transparent)`,
       }} />
 
-      {/* NEW badge */}
       {isNew && (
         <div style={{
           position: 'absolute', top: 12, right: 12,
@@ -163,71 +188,46 @@ function OrderCard({ order, index, isNew }) {
         }}>NEW</div>
       )}
 
-      {/* Avatar + name row */}
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <Avatar name={order.name} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 16, fontWeight: 700, color: '#F9FAFB',
-            fontFamily: "'Syne', sans-serif",
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{order.name}</div>
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              fontSize: 16, fontWeight: 700, color: '#F9FAFB',
+              fontFamily: "'Syne', sans-serif",
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{order.name}</div>
+            {isDelivered && <span style={{ fontSize: 15, flexShrink: 0 }}>✅</span>}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
             <span style={{ fontSize: 11, color: '#4B5563', fontFamily: 'monospace' }}>
               {order.orderId}
             </span>
             <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#374151' }} />
-            <span style={{ fontSize: 11, color: '#F9FAFB' }}>📍 {order.pincode}</span>
+            <span style={{ fontSize: 11, color: '#9CA3AF' }}>📍 {order.pincode}</span>
           </div>
-
-          {/* Status pill — hidden when delivered */}
-          {!isDelivered && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              marginTop: 10, padding: '5px 12px', borderRadius: 999,
-              border: `1px solid ${info.color}30`, background: info.color + '15',
-            }}>
-              <span style={{ fontSize: 13 }}>{info.icon}</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: info.color }}>{info.label}</span>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Step timeline or delivered celebration */}
-      {isDelivered ? (
-        <div style={{
-          marginTop: 14, padding: '20px 16px',
-          background: 'linear-gradient(135deg, #022c22 0%, #064E3B 50%, #065F46 100%)',
-          border: '1px solid #059669', borderRadius: 16,
-          textAlign: 'center', position: 'relative', overflow: 'hidden',
-        }}>
-          <div style={{
-            position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)',
-            width: 120, height: 60, background: '#10B98130',
-            borderRadius: '50%', filter: 'blur(20px)',
-          }} />
-          <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
-          <div style={{
-            fontSize: 16, fontWeight: 800, color: '#10B981',
-            fontFamily: "'Syne', sans-serif",
-            letterSpacing: '-0.3px', marginBottom: 6,
-          }}>Your order is delivered!</div>
-          <div style={{ fontSize: 12, color: '#6EE7B7', lineHeight: 1.6 }}>
-            Hope you love it ❤️
-          </div>
-        </div>
-      ) : (
-        <StepTimeline status={order.status} />
-      )}
-
-      {/* Footer */}
       <div style={{
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-        marginTop: 12, paddingTop: 12, borderTop: '1px solid #0D1117',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginTop: 12, paddingTop: 12, borderTop: '1px solid #1A2030',
       }}>
-      
+        <button
+          onClick={copyId}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'none', border: '1px solid #1F2937',
+            borderRadius: 8, padding: '5px 10px', cursor: trackingId ? 'pointer' : 'default',
+            color: copied ? '#10B981' : '#6B7280',
+            fontSize: 11, fontFamily: 'monospace', transition: 'color 0.2s, border-color 0.2s',
+          }}
+          onMouseEnter={e => { if (trackingId) e.currentTarget.style.borderColor = '#374151'; }}
+          onMouseLeave={e => e.currentTarget.style.borderColor = '#1F2937'}
+        >
+          <span style={{ fontSize: 12 }}>{copied ? '✓' : '⎘'}</span>
+          {copied ? 'Copied!' : (trackingId || '—')}
+        </button>
 
         {link && (
           <a
@@ -236,7 +236,7 @@ function OrderCard({ order, index, isNew }) {
             onClick={e => e.stopPropagation()}
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 12px', borderRadius: 999,
+              padding: '5px 14px', borderRadius: 999,
               background: '#064E3B', border: '1px solid #059669',
               color: '#10B981', fontSize: 11, fontWeight: 600, textDecoration: 'none',
             }}
@@ -248,7 +248,6 @@ function OrderCard({ order, index, isNew }) {
     </div>
   );
 }
-
 // ─── BottomBar ────────────────────────────────────────────────────
 function BottomBar({ bar }) {
   if (!bar || !bar.text || bar.active === false) return null;
