@@ -1,312 +1,122 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 
-const BG_REFRESH_MS = 5 * 60 * 1000;
+// ─── Credentials ──────────────────────────────────────────────────────────────
+const CSM_USER = '1';
+const CSM_PASS = '1';
 
-export async function getStaticPaths() {
-  return { paths: [], fallback: 'blocking' };
-}
+// ─── LoginPage ────────────────────────────────────────────────────────────────
+function LoginPage({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
 
-export async function getStaticProps({ params }) {
-  const { code } = params;
-  const HQ = process.env.HQ_ENDPOINT;
-  if (!HQ) return { props: { code, config: null }, revalidate: 60 };
-  try {
-    const res  = await fetch(`${HQ}?action=resolve&code=${code}`);
-    const data = await res.json();
-    if (!data.found) return { notFound: true, revalidate: 60 };
-    return { props: { code, config: data }, revalidate: 300 };
-  } catch {
-    return { notFound: true, revalidate: 60 };
+  function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setTimeout(() => {
+      if (username.trim() === CSM_USER && password === CSM_PASS) {
+        onLogin();
+      } else {
+        setError('Invalid username or password.');
+        setLoading(false);
+      }
+    }, 400);
   }
-}
 
-const LANGS = [
-  { code: 'en', label: 'EN', name: 'English' },
-  { code: 'ml', label: 'മല', name: 'Malayalam' },
-  { code: 'ta', label: 'த',  name: 'Tamil' },
-  { code: 'hi', label: 'हि', name: 'Hindi' },
-  { code: 'kn', label: 'ಕ',  name: 'Kannada' },
-  { code: 'te', label: 'తె', name: 'Telugu' },
-];
-
-const T = {
-  en: {
-    orderTracking:    'ORDER TRACKING',
-    tapToRefresh:     'Tap to refresh',
-    updating:         'Updating…',
-    searchPlaceholder:'Search by name or order ID...',
-    liveOrders:       'LIVE ORDERS',
-    results:          n => `${n} RESULT${n !== 1 ? 'S' : ''}`,
-    noOrders:         'No active orders right now',
-    checkBackSoon:    'Check back soon',
-    noResultsFor:     q => `No results for "${q}"`,
-    tryDifferent:     'Try a different name or order ID',
-  },
-  ml: {
-    orderTracking:    'ഓർഡർ ട്രാക്കിംഗ്',
-    tapToRefresh:     'പുതുക്കാൻ ടാപ്പ് ചെയ്യുക',
-    updating:         'അപ്ഡേറ്റ് ചെയ്യുന്നു…',
-    searchPlaceholder:'പേര് അല്ലെങ്കിൽ ഓർഡർ ID തിരയുക...',
-    liveOrders:       'തത്സമയ ഓർഡറുകൾ',
-    results:          n => `${n} ഫലം`,
-    noOrders:         'ഇപ്പോൾ സജീവ ഓർഡറുകൾ ഇല്ല',
-    checkBackSoon:    'പിന്നീട് വീണ്ടും നോക്കൂ',
-    noResultsFor:     q => `"${q}" ന് ഫലമൊന്നുമില്ല`,
-    tryDifferent:     'മറ്റൊരു പേര് അല്ലെങ്കിൽ ID ഉപയോഗിക്കുക',
-  },
-  ta: {
-    orderTracking:    'ஆர்டர் கண்காணிப்பு',
-    tapToRefresh:     'புதுப்பிக்க தட்டவும்',
-    updating:         'புதுப்பிக்கிறது…',
-    searchPlaceholder:'பெயர் அல்லது ஆர்டர் ID தேடுக...',
-    liveOrders:       'நேரடி ஆர்டர்கள்',
-    results:          n => `${n} முடிவு`,
-    noOrders:         'இப்போது செயலில் உள்ள ஆர்டர்கள் இல்லை',
-    checkBackSoon:    'சற்று நேரம் கழித்து பாருங்கள்',
-    noResultsFor:     q => `"${q}" க்கு முடிவு இல்லை`,
-    tryDifferent:     'வேறு பெயர் அல்லது ID முயற்சிக்கவும்',
-  },
-  hi: {
-    orderTracking:    'ऑर्डर ट्रैकिंग',
-    tapToRefresh:     'रिफ्रेश करने के लिए टैप करें',
-    updating:         'अपडेट हो रहा है…',
-    searchPlaceholder:'नाम या ऑर्डर ID खोजें...',
-    liveOrders:       'लाइव ऑर्डर',
-    results:          n => `${n} परिणाम`,
-    noOrders:         'अभी कोई सक्रिय ऑर्डर नहीं',
-    checkBackSoon:    'थोड़ी देर बाद देखें',
-    noResultsFor:     q => `"${q}" के लिए कोई परिणाम नहीं`,
-    tryDifferent:     'कोई अलग नाम या ID आज़माएं',
-  },
-  kn: {
-    orderTracking:    'ಆರ್ಡರ್ ಟ್ರ್ಯಾಕಿಂಗ್',
-    tapToRefresh:     'ರಿಫ್ರೆಶ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ',
-    updating:         'ನವೀಕರಿಸಲಾಗುತ್ತಿದೆ…',
-    searchPlaceholder:'ಹೆಸರು ಅಥವಾ ಆರ್ಡರ್ ID ಹುಡುಕಿ...',
-    liveOrders:       'ನೇರ ಆರ್ಡರ್‌ಗಳು',
-    results:          n => `${n} ಫಲಿತಾಂಶ`,
-    noOrders:         'ಇದೀಗ ಸಕ್ರಿಯ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ',
-    checkBackSoon:    'ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ನೋಡಿ',
-    noResultsFor:     q => `"${q}" ಗೆ ಫಲಿತಾಂಶಗಳಿಲ್ಲ`,
-    tryDifferent:     'ಬೇರೆ ಹೆಸರು ಅಥವಾ ID ಪ್ರಯತ್ನಿಸಿ',
-  },
-  te: {
-    orderTracking:    'ఆర్డర్ ట్రాకింగ్',
-    tapToRefresh:     'రిఫ్రెష్ చేయడానికి నొక్కండి',
-    updating:         'అప్‌డేట్ అవుతోంది…',
-    searchPlaceholder:'పేరు లేదా ఆర్డర్ ID వెతకండి...',
-    liveOrders:       'లైవ్ ఆర్డర్లు',
-    results:          n => `${n} ఫలితాలు`,
-    noOrders:         'ప్రస్తుతం చురుకైన ఆర్డర్లు లేవు',
-    checkBackSoon:    'కొంత సేపటికి మళ్ళీ చూడండి',
-    noResultsFor:     q => `"${q}" కి ఫలితాలు లేవు`,
-    tryDifferent:     'వేరే పేరు లేదా ID ప్రయత్నించండి',
-  },
-};
-
-function getInitials(name = '') {
-  return name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?';
-}
-function getAvatarColor(name = '') {
-  const colors = ['#7C3AED','#DB2777','#D97706','#059669','#2563EB','#DC2626'];
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % colors.length;
-  return colors[h];
-}
-
-function LiveDot() {
-  return (
-    <span style={{ position:'relative', display:'inline-flex', alignItems:'center', justifyContent:'center', width:16, height:16 }}>
-      <span style={{ position:'absolute', width:'100%', height:'100%', borderRadius:'50%', background:'#10B981', opacity:0.4, animation:'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
-      <span style={{ width:10, height:10, borderRadius:'50%', background:'#10B981' }} />
-    </span>
-  );
-}
-
-const ACCENT = {
-  'Transit':   '#60A5FA',
-  'Delivered': '#10B981',
-};
-
-function Avatar({ name }) {
   return (
     <div style={{
-      width: 44, height: 44, borderRadius: '50%',
-      background: getAvatarColor(name),
+      minHeight: '100vh', background: '#030712',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
-      fontFamily: "'Syne', sans-serif", letterSpacing: '-0.5px',
+      fontFamily: "'DM Sans', sans-serif", padding: 24,
     }}>
-      {getInitials(name)}
-    </div>
-  );
-}
-
-function OrderCard({ order, index, isNew }) {
-  const [copied, setCopied] = useState(false);
-  const isDelivered = order.status === 'Delivered';
-  const accentColor = ACCENT[order.status] || '#374151';
-  const link        = order.trackingLink;
-  const trackingId  = order.trackingId || order.orderId || '';
-
-  function copyId() {
-    if (!trackingId) return;
-    navigator.clipboard.writeText(trackingId).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
-  return (
-    <div
-      style={{
-        background: 'linear-gradient(135deg, #0D1117 0%, #111827 100%)',
-        border: `1px solid ${isDelivered ? '#065F46' : '#1F2937'}`,
-        borderRadius: 20, padding: '16px 18px',
-        position: 'relative', overflow: 'hidden',
-        animation: `cardIn 0.5s cubic-bezier(0.16,1,0.3,1) ${index * 0.06}s both`,
-        transition: 'transform 0.2s',
-      }}
-      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-      onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-    >
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-        background: `linear-gradient(90deg, ${accentColor}80, ${accentColor}20, transparent)`,
-      }} />
-
-      {isNew && (
-        <div style={{
-          position: 'absolute', top: 12, right: 12,
-          padding: '2px 8px', borderRadius: 999,
-          background: '#78350F', color: '#FCD34D',
-          fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
-        }}>NEW</div>
-      )}
-
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-        <Avatar name={order.name} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              fontSize: 16, fontWeight: 700, color: '#F9FAFB',
-              fontFamily: "'Syne', sans-serif",
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{order.name}</div>
-            {isDelivered && <span style={{ fontSize: 15, flexShrink: 0 }}>✅</span>}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-            <span style={{ fontSize: 11, color: '#4B5563', fontFamily: 'monospace' }}>{order.orderId}</span>
-            <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#374151' }} />
-            <span style={{ fontSize: 11, color: '#9CA3AF' }}>📍 {order.pincode}</span>
+      <div style={{ maxWidth: 380, width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
+          <div style={{
+            fontSize: 22, fontWeight: 800, fontFamily: "'Syne', sans-serif",
+            letterSpacing: '-0.5px', color: '#F9FAFB',
+          }}>CSM OCR Tool</div>
+          <div style={{ fontSize: 13, color: '#6B7280', marginTop: 6 }}>
+            EasyOrderTracking · Internal
           </div>
         </div>
-      </div>
 
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginTop: 12, paddingTop: 12, borderTop: '1px solid #1A2030',
-      }}>
-        <button
-          onClick={copyId}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: '1px solid #1F2937',
-            borderRadius: 8, padding: '5px 10px', cursor: trackingId ? 'pointer' : 'default',
-            color: copied ? '#10B981' : '#6B7280',
-            fontSize: 11, fontFamily: 'monospace',
-            transition: 'color 0.2s, border-color 0.2s',
-          }}
-          onMouseEnter={e => { if (trackingId) e.currentTarget.style.borderColor = '#374151'; }}
-          onMouseLeave={e => e.currentTarget.style.borderColor = '#1F2937'}
-        >
-          <span style={{ fontSize: 12 }}>{copied ? '✓' : '⎘'}</span>
-          {copied ? 'Copied!' : (trackingId || '—')}
-        </button>
+        <form onSubmit={handleSubmit} style={{
+          background: '#0D1117', border: '1px solid #1F2937',
+          borderRadius: 20, padding: '32px 28px',
+        }}>
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.06em' }}>
+              USERNAME
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              autoComplete="username"
+              required
+              style={{
+                display: 'block', width: '100%', marginTop: 8,
+                padding: '12px 16px', background: '#111827',
+                border: '1px solid #1F2937', borderRadius: 12,
+                color: '#F9FAFB', fontSize: 15, fontFamily: "'DM Sans', sans-serif",
+                outline: 'none', transition: 'border-color 0.2s',
+              }}
+              onFocus={e  => e.target.style.borderColor = '#10B98180'}
+              onBlur={e   => e.target.style.borderColor = '#1F2937'}
+            />
+          </div>
 
-        {link && (
-          <a
-            href={link}
-            target="_blank" rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.06em' }}>
+              PASSWORD
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              style={{
+                display: 'block', width: '100%', marginTop: 8,
+                padding: '12px 16px', background: '#111827',
+                border: '1px solid #1F2937', borderRadius: 12,
+                color: '#F9FAFB', fontSize: 15, fontFamily: "'DM Sans', sans-serif",
+                outline: 'none', transition: 'border-color 0.2s',
+              }}
+              onFocus={e  => e.target.style.borderColor = '#10B98180'}
+              onBlur={e   => e.target.style.borderColor = '#1F2937'}
+            />
+          </div>
+
+          {error && (
+            <div style={{
+              padding: '10px 14px', marginBottom: 18, borderRadius: 10,
+              background: '#1C0A0A', border: '1px solid #7F1D1D40',
+              color: '#FCA5A5', fontSize: 13,
+            }}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
             style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 14px', borderRadius: 999,
-              background: '#064E3B', border: '1px solid #059669',
-              color: '#10B981', fontSize: 11, fontWeight: 600, textDecoration: 'none',
+              width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+              background: loading ? '#374151' : 'linear-gradient(135deg, #059669, #10B981)',
+              color: '#fff', fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
+              fontFamily: "'DM Sans', sans-serif", transition: 'opacity 0.2s',
             }}
           >
-            📦 Track
-          </a>
-        )}
-      </div>
-    </div>
-  );
-}
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
 
-function BottomBar({ bar }) {
-  if (!bar || !bar.text || bar.active === false) return null;
-  const isBtn = bar.mode === 'button' && bar.link;
-  const inner = (
-    <div style={{
-      display:'flex', alignItems:'center', justifyContent:'center', gap:10,
-      padding:'14px 20px',
-      background:'linear-gradient(135deg, #064E3B, #065F46)',
-      border:'1px solid #059669', borderRadius:16,
-      color:'#10B981', fontSize:14, fontWeight:600,
-      textDecoration:'none', boxShadow:'0 4px 24px #05966920',
-    }}>
-      <span style={{ fontSize:18 }}>💬</span>
-      <span>{bar.text}</span>
-    </div>
-  );
-  return (
-    <div style={{
-      position:'fixed', bottom:0, left:0, right:0,
-      padding:'12px 16px 20px',
-      background:'linear-gradient(to top, #030712 60%, transparent)',
-      zIndex:50,
-    }}>
-      <div style={{ maxWidth:560, margin:'0 auto' }}>
-        {isBtn ? <a href={bar.link} target="_blank" rel="noreferrer" style={{ textDecoration:'none' }}>{inner}</a> : inner}
-      </div>
-    </div>
-  );
-}
-
-function SuspendedPage({ brandName }) {
-  return (
-    <div style={{
-      minHeight:'100vh', background:'#030712', display:'flex',
-      alignItems:'center', justifyContent:'center',
-      fontFamily:"'DM Sans',sans-serif", padding:24,
-    }}>
-      <div style={{ maxWidth:400, width:'100%', textAlign:'center' }}>
-        <div style={{ fontSize:52, marginBottom:20 }}>⏸️</div>
-        <div style={{
-          fontSize:20, fontWeight:800, color:'#F9FAFB',
-          fontFamily:"'Syne',sans-serif", marginBottom:10,
-        }}>{brandName.toUpperCase()}</div>
-        <div style={{
-          background:'#0D1117', border:'1px solid #292524',
-          borderRadius:20, padding:'28px 24px',
-        }}>
-          <div style={{
-            display:'inline-block', background:'#451a0340',
-            border:'1px solid #92400e60', borderRadius:8,
-            padding:'4px 14px', fontSize:11, fontWeight:700,
-            color:'#fbbf24', letterSpacing:'0.08em', marginBottom:18,
-          }}>SERVICE PAUSED</div>
-          <p style={{ color:'#D1D5DB', fontSize:15, lineHeight:1.7, marginBottom:16 }}>
-            Order tracking for this business is temporarily unavailable.
-          </p>
-          <p style={{ color:'#6B7280', fontSize:13, lineHeight:1.6 }}>
-            If you placed an order, please contact the business directly for updates.
-            We apologise for the inconvenience.
-          </p>
-        </div>
-        <p style={{ fontSize:11, color:'#374151', marginTop:24 }}>
+        <p style={{ textAlign: 'center', fontSize: 11, color: '#374151', marginTop: 20 }}>
           Powered by EasyOrderTracking
         </p>
       </div>
@@ -314,303 +124,390 @@ function SuspendedPage({ brandName }) {
   );
 }
 
-function LangPicker({ lang, setLang }) {
-  const [open, setOpen] = useState(false);
-  const current = LANGS.find(l => l.code === lang) || LANGS[0];
+// ─── SlipCard ─────────────────────────────────────────────────────────────────
+function SlipCard({ slip, index, onUpdate, onRemove }) {
+  const { preview, status, result, error } = slip;
+
+  function field(key, label, placeholder) {
+    return (
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', marginBottom: 4 }}>
+          {label}
+        </div>
+        <input
+          type="text"
+          value={result?.[key] || ''}
+          onChange={e => onUpdate(index, key, e.target.value)}
+          placeholder={placeholder}
+          style={{
+            width: '100%', padding: '9px 12px',
+            background: result?.[key] ? '#111827' : '#0D1117',
+            border: `1px solid ${result?.[key] ? '#1F2937' : '#374151'}`,
+            borderRadius: 10, color: result?.[key] ? '#F9FAFB' : '#4B5563',
+            fontSize: 13, fontFamily: "'DM Sans', sans-serif", outline: 'none',
+            transition: 'border-color 0.2s',
+          }}
+          onFocus={e  => e.target.style.borderColor = '#10B98160'}
+          onBlur={e   => e.target.style.borderColor = result?.[key] ? '#1F2937' : '#374151'}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          padding: '6px 10px', background: '#0D1117',
-          border: '1px solid #1F2937', borderRadius: 999,
-          cursor: 'pointer', color: '#F9FAFB',
-          fontFamily: "'DM Sans',sans-serif", fontSize: 12, fontWeight: 600,
-        }}
-      >
-        <span style={{ fontSize: 13 }}>🌐</span>
-        <span>{current.label}</span>
-      </button>
+    <div style={{
+      background: '#0D1117', border: `1px solid ${status === 'done' ? '#065F46' : status === 'error' ? '#7F1D1D' : '#1F2937'}`,
+      borderRadius: 18, padding: '16px', position: 'relative',
+      animation: 'cardIn 0.4s cubic-bezier(0.16,1,0.3,1) both',
+    }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 2, borderRadius: '18px 18px 0 0',
+        background: status === 'done' ? 'linear-gradient(90deg,#10B98160,transparent)' :
+                    status === 'error' ? 'linear-gradient(90deg,#EF444460,transparent)' :
+                    'linear-gradient(90deg,#F59E0B60,transparent)',
+      }} />
 
-      {open && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 200 }}
-            onClick={() => setOpen(false)}
-          />
-          <div style={{
-            position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 201,
-            background: '#0D1117', border: '1px solid #1F2937', borderRadius: 14,
-            overflow: 'hidden', minWidth: 140,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          }}>
-            {LANGS.map(l => (
-              <button
-                key={l.code}
-                onClick={() => { setLang(l.code); setOpen(false); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  width: '100%', padding: '10px 14px', background: 'none',
-                  border: 'none', borderBottom: '1px solid #111827',
-                  cursor: 'pointer', textAlign: 'left',
-                  color: l.code === lang ? '#10B981' : '#D1D5DB',
-                  fontFamily: "'DM Sans',sans-serif", fontSize: 13,
-                  fontWeight: l.code === lang ? 700 : 400,
-                }}
-              >
-                <span style={{ width: 22, textAlign: 'center', fontSize: 13, fontWeight: 700 }}>{l.label}</span>
-                <span>{l.name}</span>
-                {l.code === lang && <span style={{ marginLeft: 'auto', fontSize: 12 }}>✓</span>}
-              </button>
-            ))}
+      <button
+        onClick={() => onRemove(index)}
+        style={{
+          position: 'absolute', top: 12, right: 12,
+          background: '#1F2937', border: 'none', color: '#9CA3AF',
+          width: 26, height: 26, borderRadius: '50%', cursor: 'pointer',
+          fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >✕</button>
+
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: 10, overflow: 'hidden',
+          background: '#111827', flexShrink: 0, border: '1px solid #1F2937',
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview} alt={`Slip ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+              color: status === 'done' ? '#10B981' : status === 'error' ? '#EF4444' : '#F59E0B' }}>
+              {status === 'processing' ? '⏳ READING…' :
+               status === 'done'       ? '✓ EXTRACTED' :
+               status === 'error'      ? '✗ FAILED'    : '⏸ PENDING'}
+            </span>
+            <span style={{ fontSize: 11, color: '#4B5563' }}>Slip {index + 1}</span>
           </div>
-        </>
-      )}
+
+          {status === 'error' && (
+            <div style={{ fontSize: 12, color: '#FCA5A5', marginBottom: 10 }}>
+              {error || 'Could not read this slip. Edit manually below.'}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {field('name',       'RECIPIENT NAME',  'e.g. Rahul Sharma')}
+            {field('pincode',    'PINCODE',         '6-digit PIN')}
+            {field('trackingId', 'TRACKING ID',     'AWB / Consignment')}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function TrackingPage({ code, config }) {
-  const [orders,     setOrders]     = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error,      setError]      = useState(null);
-  const [search,     setSearch]     = useState('');
-  const [syncTime,   setSyncTime]   = useState('');
-  const [lang,       setLang]       = useState('en');
+// ─── OCRPage ──────────────────────────────────────────────────────────────────
+function OCRPage() {
+  const [slips,    setSlips]    = useState([]);
+  const [dragging, setDragging] = useState(false);
+  const [copied,   setCopied]   = useState(false);
+  const fileRef  = useRef();
 
-  useEffect(() => {
-    const saved = typeof localStorage !== 'undefined' && localStorage.getItem('eot_lang');
-    if (saved && T[saved]) setLang(saved);
-  }, []);
-  useEffect(() => {
-    if (typeof localStorage !== 'undefined') localStorage.setItem('eot_lang', lang);
-  }, [lang]);
-
-  const t = T[lang] || T.en;
-
-  const fetchOrders = useCallback(async (isManual = false) => {
-    if (isManual) setRefreshing(true);
-    try {
-      const res  = await fetch(`/api/orders?code=${code}&t=${Date.now()}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setOrders(data.orders || []);
-      setSyncTime(new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }));
-      setError(null);
-    } catch (e) {
-      setError('Could not refresh. Check your connection.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [code]);
-
-  useEffect(() => {
-    fetchOrders();
-    const iv = setInterval(() => fetchOrders(false), BG_REFRESH_MS);
-    return () => clearInterval(iv);
-  }, [fetchOrders]);
-
-  const filtered = orders.filter(o => {
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    return o.name?.toLowerCase().includes(q) || o.orderId?.toLowerCase().includes(q);
-  });
-
-  if (config?.suspended) {
-    return (
-      <>
-        <Head>
-          <title>Service Paused</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <meta name="robots" content="noindex" />
-          <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,600&display=swap" rel="stylesheet" />
-        </Head>
-        <style>{`*{margin:0;padding:0;box-sizing:border-box;}`}</style>
-        <SuspendedPage brandName={config.brandName || 'This Store'} />
-      </>
-    );
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload  = () => resolve(r.result.split(',')[1]);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
   }
 
-  const brandName = config?.brandName || 'Order Tracking';
-  const bottomBar = config?.bottomBar;
+  async function processFiles(files) {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (!imageFiles.length) return;
+
+    const newSlips = imageFiles.map(f => ({
+      id:       Math.random().toString(36).slice(2),
+      preview:  URL.createObjectURL(f),
+      mimeType: f.type,
+      file:     f,
+      status:   'pending',
+      result:   { name: '', pincode: '', trackingId: '' },
+      error:    null,
+    }));
+
+    setSlips(prev => [...prev, ...newSlips]);
+
+    await Promise.all(newSlips.map(async (slip) => {
+      setSlips(prev => prev.map(s => s.id === slip.id ? { ...s, status: 'processing' } : s));
+
+      try {
+        const base64 = await toBase64(slip.file);
+        const res    = await fetch('/api/extract', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ image: base64, mimeType: slip.mimeType }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          setSlips(prev => prev.map(s =>
+            s.id === slip.id ? { ...s, status: 'done', result: data.result } : s,
+          ));
+        } else {
+          const msg = [data.error, data.detail].filter(Boolean).join(' | ');
+          setSlips(prev => prev.map(s =>
+            s.id === slip.id ? { ...s, status: 'error', error: msg } : s,
+          ));
+        }
+      } catch {
+        setSlips(prev => prev.map(s =>
+          s.id === slip.id ? { ...s, status: 'error', error: 'Network error' } : s,
+        ));
+      }
+    }));
+  }
+
+  const onDrop = useCallback(e => {
+    e.preventDefault();
+    setDragging(false);
+    processFiles(e.dataTransfer.files);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function updateField(index, key, value) {
+    setSlips(prev => prev.map((s, i) =>
+      i === index ? { ...s, result: { ...s.result, [key]: value } } : s,
+    ));
+  }
+
+  function removeSlip(index) {
+    setSlips(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function clearAll() {
+    setSlips([]);
+  }
+
+  function buildTable() {
+    return slips
+      .filter(s => s.result?.name || s.result?.trackingId)
+      .map(s => `${s.result.name}\t${s.result.pincode}\t${s.result.trackingId}`)
+      .join('\n');
+  }
+
+  function copyTable() {
+    const table = buildTable();
+    navigator.clipboard.writeText(table).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  }
+
+  const doneCount = slips.filter(s => s.status === 'done').length;
+  const hasData   = slips.some(s => s.result?.name || s.result?.trackingId);
 
   return (
-    <>
-      <Head>
-        <title>{brandName} — Order Status</title>
-        <meta name="description" content={`Track your order from ${brandName} in real time.`} />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="theme-color" content="#030712" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
-      </Head>
-
-      <style>{`
-        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-        body{background:#0B0F19;color:#F9FAFB;font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:120px;-webkit-font-smoothing:antialiased;}
-        @keyframes ping{75%,100%{transform:scale(2);opacity:0;}}
-        @keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(0.97);}to{opacity:1;transform:translateY(0) scale(1);}}
-        @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-        @keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
-        @keyframes spin{to{transform:rotate(360deg);}}
-        input{border:none;outline:none;}
-        a{transition:opacity 0.2s;}a:hover{opacity:0.85;}
-        ::-webkit-scrollbar{width:3px;}
-        ::-webkit-scrollbar-thumb{background:#1F2937;border-radius:4px;}
-        .skeleton{background:linear-gradient(90deg,#111827 25%,#1F2937 50%,#111827 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:20px;}
-        input::placeholder{color:#9CA3AF;}
-        button{font-family:'DM Sans',sans-serif;}
-      `}</style>
-
-      <div style={{ position:'fixed', inset:0, zIndex:0, pointerEvents:'none',
-        background:'radial-gradient(ellipse 80% 50% at 50% -10%, #1a0a2e20 0%, transparent 70%)' }} />
-
+    <div style={{
+      minHeight: '100vh', background: '#030712',
+      fontFamily: "'DM Sans', sans-serif", paddingBottom: 80,
+    }}>
       <header style={{
-        position:'sticky', top:0, zIndex:100,
-        background:'rgba(3,7,18,0.88)', backdropFilter:'blur(20px)',
-        WebkitBackdropFilter:'blur(20px)', borderBottom:'1px solid #0D1117',
+        background: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid #0D1117', position: 'sticky', top: 0, zIndex: 100,
       }}>
-        <div style={{ maxWidth:560, margin:'0 auto', padding:'14px 16px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div>
-              <div style={{
-                fontSize:18, fontWeight:800, fontFamily:"'Syne',sans-serif",
-                letterSpacing:'-0.5px',
-                background:'linear-gradient(135deg, #F9FAFB 0%, #9CA3AF 100%)',
-                WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              }}>{brandName.toUpperCase()}</div>
-              <div style={{ fontSize:12, color:'#FFFFFF', letterSpacing:'0.08em', marginTop:1 }}>
-                {t.orderTracking}
-              </div>
-            </div>
-
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <LangPicker lang={lang} setLang={setLang} />
-              <button
-                onClick={() => fetchOrders(true)}
-                disabled={refreshing}
-                style={{
-                  display:'flex', alignItems:'center', gap:8,
-                  padding:'6px 12px', background:'#0D1117',
-                  border:'1px solid #1F2937', borderRadius:999,
-                  cursor: refreshing ? 'default' : 'pointer',
-                  color:'inherit', fontFamily:"'DM Sans',sans-serif",
-                }}
-              >
-                {refreshing
-                  ? <span style={{ fontSize:11, display:'inline-block', animation:'spin 0.8s linear infinite' }}>🔄</span>
-                  : <LiveDot />
-                }
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:1 }}>
-                  <span style={{ fontSize:11, color:'#FFFFFF', lineHeight:1 }}>
-                    {refreshing ? t.updating : (syncTime || '–– : ––')}
-                  </span>
-                  {!refreshing && (
-                    <span style={{ fontSize:9, color:'#FFFFFF', lineHeight:1 }}>{t.tapToRefresh}</span>
-                  )}
-                </div>
-              </button>
+        <div style={{ maxWidth: 700, margin: '0 auto', padding: '14px 20px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{
+              fontSize: 17, fontWeight: 800, fontFamily: "'Syne', sans-serif",
+              letterSpacing: '-0.4px', color: '#F9FAFB',
+            }}>OCR Slip Reader</div>
+            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>
+              EasyOrderTracking · CSM Tool
             </div>
           </div>
+          {slips.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: '#6B7280' }}>
+                {doneCount}/{slips.length} read
+              </span>
+              <button
+                onClick={clearAll}
+                style={{
+                  padding: '6px 14px', borderRadius: 999, border: '1px solid #1F2937',
+                  background: 'none', color: '#9CA3AF', fontSize: 12, cursor: 'pointer',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >Clear all</button>
+            </div>
+          )}
         </div>
       </header>
 
-      <main style={{ maxWidth:560, margin:'0 auto', padding:'0 16px', position:'relative', zIndex:1 }}>
+      <main style={{ maxWidth: 700, margin: '0 auto', padding: '24px 20px' }}>
 
-        {config?.showSearch !== false && (
-          <div style={{ position:'sticky', top:52, zIndex:50, paddingTop:12, paddingBottom:10, background:'#030712' }}>
-            <div style={{ position:'relative' }}>
-              <span style={{
-                position:'absolute', left:16, top:'50%', transform:'translateY(-50%)',
-                fontSize:16, color:'#6B7280', pointerEvents:'none',
-              }}>🔍</span>
-              <input
-                type="text" value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                style={{
-                  width:'100%', padding:'14px 16px 14px 46px',
-                  background:'#FFFFFF', border:'1px solid #E5E7EB',
-                  borderRadius:16, color:'#111827', fontSize:14, fontWeight:500,
-                  fontFamily:"'DM Sans',sans-serif",
-                  boxShadow:'0 4px 20px rgba(0,0,0,0.2)', transition:'all 0.2s',
-                }}
-                onFocus={e => { e.target.style.borderColor='#F59E0B80'; e.target.style.boxShadow='0 0 0 3px #F59E0B15'; }}
-                onBlur={e  => { e.target.style.borderColor='#E5E7EB'; e.target.style.boxShadow='0 4px 20px rgba(0,0,0,0.2)'; }}
-              />
-              {search && (
-                <button onClick={() => setSearch('')} style={{
-                  position:'absolute', right:14, top:'50%', transform:'translateY(-50%)',
-                  background:'#F3F4F6', border:'none', color:'#111827',
-                  width:22, height:22, borderRadius:'50%', cursor:'pointer', fontSize:12,
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                }}>✕</button>
-              )}
-            </div>
+        <div
+          onClick={() => fileRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          style={{
+            border: `2px dashed ${dragging ? '#10B981' : '#1F2937'}`,
+            borderRadius: 20, padding: '40px 24px', textAlign: 'center',
+            cursor: 'pointer', background: dragging ? '#022c22' : '#0D1117',
+            transition: 'all 0.2s', marginBottom: 24,
+          }}
+        >
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📸</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 6 }}>
+            Drop tracking slip photos here
           </div>
-        )}
-
-        {loading && (
-          <div style={{ display:'flex', flexDirection:'column', gap:12, marginTop:8 }}>
-            {[1,2,3].map(i => (
-              <div key={i} className="skeleton" style={{ height:120, opacity: 1 - i * 0.2 }} />
-            ))}
+          <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+            or click to select images — JPG, PNG, WEBP
           </div>
-        )}
-
-        {error && !loading && (
           <div style={{
-            padding:14, marginTop:8, marginBottom:12,
-            background:'#1C0A0A', border:'1px solid #7F1D1D40',
-            borderRadius:14, color:'#FCA5A5', fontSize:13,
-            display:'flex', alignItems:'center', gap:10,
-          }}>⚠️ {error}</div>
-        )}
-
-        {!loading && (
-          <div style={{
-            display:'flex', justifyContent:'space-between',
-            alignItems:'center', marginBottom:12, marginTop:8,
+            display: 'inline-block', padding: '10px 24px', borderRadius: 999,
+            background: 'linear-gradient(135deg,#059669,#10B981)',
+            color: '#fff', fontSize: 13, fontWeight: 700,
           }}>
-            <span style={{ fontSize:11, color:'#FFFFFF', letterSpacing:'0.08em', fontWeight:600 }}>
-              {search ? t.results(filtered.length) : t.liveOrders}
-            </span>
+            Upload Slips
           </div>
-        )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={e => { processFiles(e.target.files); e.target.value = ''; }}
+          />
+        </div>
 
-        {!loading && filtered.length === 0 && (
-          <div style={{ textAlign:'center', padding:'64px 0', animation:'fadeIn 0.4s ease' }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>{search ? '🔍' : '📦'}</div>
-            <div style={{ fontSize:18, color:'#FFFFFF', fontWeight:600 }}>
-              {search ? t.noResultsFor(search) : t.noOrders}
-            </div>
-            <div style={{ fontSize:14, color:'#6B7280', marginTop:8 }}>
-              {search ? t.tryDifferent : t.checkBackSoon}
-            </div>
-          </div>
-        )}
-
-        {!loading && filtered.length > 0 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            {filtered.map((order, i) => (
-              <OrderCard
-                key={order.orderId || i}
-                order={order}
+        {slips.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+            {slips.map((slip, i) => (
+              <SlipCard
+                key={slip.id}
+                slip={slip}
                 index={i}
-                isNew={order.isNew && !search && i === 0}
+                onUpdate={updateField}
+                onRemove={removeSlip}
               />
             ))}
+          </div>
+        )}
+
+        {hasData && (
+          <div style={{
+            background: '#0D1117', border: '1px solid #1F2937', borderRadius: 18, padding: '20px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F9FAFB' }}>
+                  Ready to paste into Google Sheets
+                </div>
+                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>
+                  Click copy → open your Sheet → paste (Ctrl+V)
+                </div>
+              </div>
+              <button
+                onClick={copyTable}
+                style={{
+                  padding: '10px 22px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: copied
+                    ? 'linear-gradient(135deg,#059669,#10B981)'
+                    : 'linear-gradient(135deg,#1D4ED8,#3B82F6)',
+                  color: '#fff', fontSize: 13, fontWeight: 700,
+                  fontFamily: "'DM Sans', sans-serif", transition: 'background 0.3s',
+                  flexShrink: 0,
+                }}
+              >
+                {copied ? '✓ Copied!' : '📋 Copy Table'}
+              </button>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['Name', 'Pincode', 'Tracking ID'].map(h => (
+                      <th key={h} style={{
+                        textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #1F2937',
+                        fontSize: 10, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em',
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {slips.filter(s => s.result?.name || s.result?.trackingId).map((slip, i) => (
+                    <tr key={slip.id} style={{ borderBottom: '1px solid #111827' }}>
+                      <td style={{ padding: '9px 12px', color: slip.result.name ? '#F9FAFB' : '#4B5563' }}>
+                        {slip.result.name || '—'}
+                      </td>
+                      <td style={{ padding: '9px 12px', color: slip.result.pincode ? '#F9FAFB' : '#4B5563', fontFamily: 'monospace' }}>
+                        {slip.result.pincode || '—'}
+                      </td>
+                      <td style={{ padding: '9px 12px', color: slip.result.trackingId ? '#10B981' : '#4B5563', fontFamily: 'monospace' }}>
+                        {slip.result.trackingId || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {slips.length === 0 && (
+          <div style={{ textAlign: 'center', paddingTop: 20 }}>
+            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.8 }}>
+              Upload photos of courier slips (DTDC, India Post, Delhivery…)<br />
+              Gemini AI will extract <strong style={{ color: '#6B7280' }}>name · pincode · tracking ID</strong> automatically.<br />
+              You review, edit if needed, then copy the table to Google Sheets.
+            </div>
           </div>
         )}
 
       </main>
+    </div>
+  );
+}
 
-      {bottomBar && <BottomBar bar={bottomBar} />}
+// ─── Root ─────────────────────────────────────────────────────────────────────
+export default function OCRRoute() {
+  const [authed, setAuthed] = useState(false);
+
+  return (
+    <>
+      <Head>
+        <title>CSM OCR Tool · EasyOrderTracking</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+      </Head>
+
+      <style>{`
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body { -webkit-font-smoothing: antialiased; }
+        input { outline: none; }
+        button { font-family: 'DM Sans', sans-serif; }
+        @keyframes cardIn {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      {authed ? <OCRPage /> : <LoginPage onLogin={() => setAuthed(true)} />}
     </>
   );
 }
