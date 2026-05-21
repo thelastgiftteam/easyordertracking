@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Gemini-powered tracking slip extractor
+//
+// Set GEMINI_API_KEY in Vercel → Project Settings → Environment Variables
+// Get your key at: https://aistudio.google.com/app/apikey  (free to start)
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const config = {
   api: { bodyParser: { sizeLimit: '10mb' } },
 };
@@ -10,7 +17,10 @@ export default async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY not set in Vercel environment variables' });
+    return res.status(500).json({
+      error: 'GEMINI_API_KEY not set',
+      help:  'Add GEMINI_API_KEY to Vercel environment variables. Get key from https://aistudio.google.com/app/apikey',
+    });
   }
 
   const { image, mimeType } = req.body;
@@ -23,9 +33,12 @@ Extract exactly these three fields:
 - "pincode": The 6-digit Indian PIN code of the delivery address
 - "trackingId": The tracking / AWB / consignment number (alphanumeric, often starts with letters)
 
-Return ONLY a raw JSON object with keys: name, pincode, trackingId
-No explanation, no markdown, no code fences. Just the JSON.`;
+Rules:
+- Return valid JSON only with keys: name, pincode, trackingId
+- If a field is not clearly visible, return an empty string ""
+- Do not include any explanation or extra text`;
 
+  // Try endpoints in order — first working one wins
   const ENDPOINTS = [
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
@@ -33,7 +46,6 @@ No explanation, no markdown, no code fences. Just the JSON.`;
   ];
 
   let geminiRes, lastErr;
-
   for (const url of ENDPOINTS) {
     try {
       geminiRes = await fetch(url, {
@@ -57,9 +69,8 @@ No explanation, no markdown, no code fences. Just the JSON.`;
   }
 
   if (!geminiRes || !geminiRes.ok) {
-    return res.status(500).json({
-      error: 'All Gemini models failed. Last error: ' + lastErr,
-    });
+    const detail = typeof lastErr === 'string' ? lastErr.slice(0, 400) : JSON.stringify(lastErr).slice(0, 400);
+    return res.status(500).json({ error: 'Gemini API error: ' + detail });
   }
 
   try {
@@ -67,10 +78,11 @@ No explanation, no markdown, no code fences. Just the JSON.`;
     const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!raw) {
-      return res.status(500).json({ error: 'Gemini returned empty response', detail: JSON.stringify(data) });
+      return res.status(500).json({ error: 'Gemini returned no content', detail: data });
     }
 
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    // Strip markdown code fences if present
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/,'').trim();
     const result  = JSON.parse(cleaned);
 
     return res.status(200).json({
@@ -82,6 +94,7 @@ No explanation, no markdown, no code fences. Just the JSON.`;
       },
     });
   } catch (err) {
-    return res.status(500).json({ error: 'Could not parse Gemini response: ' + err.message });
+    console.error('Parse error:', err);
+    return res.status(500).json({ error: 'Could not parse Gemini response', detail: err.message });
   }
 }
