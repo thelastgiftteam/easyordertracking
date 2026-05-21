@@ -75,7 +75,8 @@ Rules:
   }
 
   if (!geminiRes || !geminiRes.ok) {
-    return res.status(500).json({ error: 'Gemini API error', detail: lastErr });
+    const detail = typeof lastErr === 'string' ? lastErr.slice(0, 400) : JSON.stringify(lastErr).slice(0, 400);
+return res.status(500).json({ error: 'Gemini API error: ' + detail });
   }
 
   try {
