@@ -263,12 +263,18 @@ function OCRPage() {
           ));
         } else {
           setSlips(prev => prev.map(s =>
-            s.id === slip.id ? { ...s, status: 'error', error: data.error } : s,
+            const msg = [data.error, data.detail].filter(Boolean).join(' | ');
+setSlips(prev => prev.map(s =>
+  s.id === slip.id ? { ...s, status: 'error', error: msg } : s,
+));
           ));
         }
       } catch {
         setSlips(prev => prev.map(s =>
-          s.id === slip.id ? { ...s, status: 'error', error: 'Network error' } : s,
+         const msg = [data.error, data.detail].filter(Boolean).join(' | ');
+setSlips(prev => prev.map(s =>
+  s.id === slip.id ? { ...s, status: 'error', error: msg } : s,
+));
         ));
       }
     }
