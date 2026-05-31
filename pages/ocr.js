@@ -243,6 +243,98 @@ function TabButton({ tab, active, onClick }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CUSTOMER SEARCH — searchable dropdown
+// ═══════════════════════════════════════════════════════════════
+function CustomerSearch({ customers, selected, onSelect, disabled }) {
+  const [query,  setQuery]  = useState('');
+  const [open,   setOpen]   = useState(false);
+  const ref = useRef();
+
+  const filtered = customers.filter(c =>
+    c.name.toLowerCase().includes(query.toLowerCase()) ||
+    c.code.includes(query)
+  );
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position:'relative' }}>
+      <div
+        onClick={() => { if (!disabled) setOpen(o => !o); }}
+        style={{
+          width:'100%', padding:'10px 12px',
+          background:'#1F2937', border:`1px solid ${open ? '#1D4ED8' : '#374151'}`,
+          borderRadius:10, color: selected ? '#F9FAFB' : '#6B7280',
+          fontSize:14, fontWeight:600, cursor: disabled ? 'default' : 'pointer',
+          display:'flex', justifyContent:'space-between', alignItems:'center',
+          transition:'border-color 0.15s',
+        }}
+      >
+        <span>{selected ? selected.name : '— Select a customer —'}</span>
+        <span style={{ fontSize:10, color:'#6B7280' }}>{open ? '▲' : '▼'}</span>
+      </div>
+
+      {open && (
+        <div style={{
+          position:'absolute', top:'calc(100% + 6px)', left:0, right:0,
+          background:'#1F2937', border:'1px solid #374151', borderRadius:10,
+          zIndex:100, overflow:'hidden', boxShadow:'0 8px 32px #00000060',
+        }}>
+          {/* Search input */}
+          <div style={{ padding:'8px 10px', borderBottom:'1px solid #374151' }}>
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search customer..."
+              style={{
+                width:'100%', padding:'8px 10px',
+                background:'#111827', border:'1px solid #374151',
+                borderRadius:8, color:'#F9FAFB', fontSize:13,
+                fontFamily:"'DM Sans',sans-serif",
+              }}
+            />
+          </div>
+
+          {/* Results */}
+          <div style={{ maxHeight:200, overflowY:'auto' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding:'12px 14px', fontSize:13, color:'#6B7280' }}>
+                No customers found
+              </div>
+            ) : filtered.map(c => (
+              <div
+                key={c.code}
+                onClick={() => { onSelect(c); setOpen(false); setQuery(''); }}
+                style={{
+                  padding:'10px 14px', cursor:'pointer',
+                  background: selected?.code === c.code ? '#1D4ED820' : 'transparent',
+                  borderBottom:'1px solid #37415130',
+                  display:'flex', justifyContent:'space-between', alignItems:'center',
+                  transition:'background 0.1s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#374151'}
+                onMouseLeave={e => e.currentTarget.style.background = selected?.code === c.code ? '#1D4ED820' : 'transparent'}
+              >
+                <span style={{ fontSize:13, fontWeight:600, color:'#F9FAFB' }}>{c.name}</span>
+                <span style={{ fontSize:11, color:'#4B5563', fontFamily:'monospace' }}>{c.code}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // TAB CONTENT
 // ═══════════════════════════════════════════════════════════════
 function TabContent({ tab, customers, loadingCust, updateTab }) {
@@ -357,24 +449,12 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
         {loadingCust ? (
           <div style={{ fontSize:13, color:'#6B7280' }}>Loading customers…</div>
         ) : (
-          <select
-            value={tab.customer?.code || ''}
-            onChange={e => {
-              const c = customers.find(c => c.code === e.target.value);
-              setCustomer(c || null);
-            }}
-            style={{
-              width:'100%', padding:'10px 12px',
-              background:'#1F2937', border:'1px solid #374151',
-              borderRadius:10, color: tab.customer ? '#F9FAFB' : '#6B7280',
-              fontSize:14, fontWeight:600, cursor:'pointer',
-            }}
-          >
-            <option value="">— Select a customer —</option>
-            {customers.map(c => (
-              <option key={c.code} value={c.code}>{c.name}</option>
-            ))}
-          </select>
+          <CustomerSearch
+            customers={customers}
+            selected={tab.customer}
+            onSelect={setCustomer}
+            disabled={isPushed}
+          />
         )}
       </div>
 
