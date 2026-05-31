@@ -4,7 +4,7 @@ import Head from 'next/head';
 const CSM_USERNAME = 'csmstebin';
 const CSM_PASSWORD = '11421';
 const CSM_SECRET   = 'flashtrack_csm';
-const HQ_ENDPOINT  = process.env.NEXT_PUBLIC_HQ_ENDPOINT || '';
+const HQ_ENDPOINT  = '/api/hq-proxy';
 
 const MAX_TABS = 5;
 
