@@ -545,7 +545,7 @@ export default function TrackingPage({ code, config }) {
 
         {/* ── Search ── */}
         {config?.showSearch !== false && (
-          <div style={{ position:'sticky', top:52, zIndex:50, paddingTop:12, paddingBottom:10, background:'#030712' }}>
+          <div style={{ position:'sticky', top:57, zIndex:50, paddingTop:12, paddingBottom:10, background:'#0B0F19' }}>
             <div style={{ position:'relative' }}>
               <span style={{
                 position:'absolute', left:16, top:'50%', transform:'translateY(-50%)',
