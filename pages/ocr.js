@@ -341,6 +341,19 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
   const fileInputRef = useRef();
   const [pushError,  setPushError]  = useState('');
   const [pushMsg,    setPushMsg]    = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const copyAsTSV = async () => {
+    const tsv = tab.rows
+      .filter(r => r.name || r.trackingId)
+      .map(r => `${r.name}\t${r.pincode}\t${r.trackingId}`)
+      .join('\n');
+    try {
+      await navigator.clipboard.writeText(tsv);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch { alert('Copy failed — select table manually'); }
+  };
 
   const setCustomer = (customer) => updateTab(tab.id, { customer, status: S.IDLE, rows:[], error:'' });
 
@@ -586,15 +599,39 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
               {tab.rows.filter(r=>r.name||r.trackingId).length} rows will be added
             </div>
           </div>
-          <button onClick={pushToSheet} style={{
-            width:'100%', padding:'13px 20px',
-            background:'linear-gradient(135deg,#047857,#10B981)',
-            color:'#fff', fontSize:15, fontWeight:800,
-            border:'none', borderRadius:12, cursor:'pointer',
-            letterSpacing:'-0.2px',
-          }}>
-            ⚡ Push to {tab.customer.name} Sheet
-          </button>
+         {isDone && tab.rows.length > 0 && tab.customer && (
+  <div style={{
+    background:'#0D1117', border:'1px solid #065F46',
+    borderRadius:14, padding:16,
+  }}>
+    <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:12 }}>
+      Ready · {tab.rows.filter(r=>r.name||r.trackingId).length} rows for {tab.customer.name}
+    </div>
+    <button onClick={copyAsTSV} style={{
+      width:'100%', padding:'13px 20px',
+      background:'linear-gradient(135deg,#047857,#10B981)',
+      color:'#fff', fontSize:15, fontWeight:800,
+      border:'none', borderRadius:12, cursor:'pointer',
+      marginBottom:8,
+    }}>
+      {copied ? '✓ Copied!' : '📋 Copy Table'}
+    </button>
+    {tab.customer?.sheetUrl && (
+      
+        href={tab.customer.sheetUrl}
+        target="_blank" rel="noreferrer"
+        style={{
+          display:'block', width:'100%', padding:'11px 20px',
+          background:'transparent', border:'1px solid #374151',
+          borderRadius:12, color:'#9CA3AF', fontSize:13, fontWeight:600,
+          textDecoration:'none', textAlign:'center',
+        }}
+      >
+        📄 Open {tab.customer.name} Sheet
+      </a>
+    )}
+  </div>
+)}
         </div>
       )}
 
