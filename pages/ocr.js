@@ -87,7 +87,7 @@ function LoginScreen({ onSuccess }) {
           <div style={{ fontSize:48, marginBottom:12 }}>⚡</div>
           <h1 style={{
             fontSize:30, fontWeight:800, fontFamily:"'Syne',sans-serif",
-            background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
+            background:'linear-gradient(135deg,#F9FAFB,#F9FAFB)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
             letterSpacing:'-0.5px', marginBottom:6,
           }}>FlashTrack CSM</h1>
@@ -171,12 +171,12 @@ function CustomerSheetPanel({ customers }) {
                       style={{
                         display:'block', padding:'9px 12px', borderRadius:8,
                         textDecoration:'none', background:'transparent',
-                        fontSize:13, fontWeight:600, color:'#9CA3AF',
+                        fontSize:13, fontWeight:600, color:'#F9FAFB',
                         whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
                         transition:'all 0.15s',
                       }}
                       onMouseEnter={e => { e.currentTarget.style.background='#1F2937'; e.currentTarget.style.color='#F9FAFB'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#9CA3AF'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#F9FAFB'; }}
                     >
                       📊 {c.name}
                     </a>
@@ -227,7 +227,7 @@ function Dashboard({ onLogout }) {
         <div style={{ padding:'22px 18px 16px', borderBottom:'1px solid #1F2937' }}>
           <div style={{
             fontSize:18, fontWeight:800, fontFamily:"'Syne',sans-serif",
-            background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
+            background:'linear-gradient(135deg,#F9FAFB,#F9FAFB)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
           }}>⚡ FlashTrack</div>
           <div style={{ fontSize:12, color:'#4B5563', marginTop:3 }}>CSM Dashboard</div>
@@ -295,7 +295,7 @@ function TabButton({ tab, active, onClick }) {
     }}>
       <div style={{ display:'flex', alignItems:'center', gap:9 }}>
         {icon}
-        <span style={{ fontSize:13, fontWeight:600, color:active?'#F9FAFB':'#9CA3AF',
+        <span style={{ fontSize:13, fontWeight:600, color:active?'#F9FAFB':'#F9FAFB',
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>
           {tab.customer ? tab.customer.name : `Task ${tab.id}`}
         </span>
@@ -445,7 +445,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
         <div>
           <h2 style={{
             fontSize:26, fontWeight:800, fontFamily:"'Syne',sans-serif",
-            background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
+            background:'linear-gradient(135deg,#F9FAFB,#F9FAFB)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
             letterSpacing:'-0.4px',
           }}>Task {tab.id}</h2>
@@ -520,7 +520,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
             padding:'14px 18px', borderBottom:'1px solid #1F2937',
             display:'flex', justifyContent:'space-between', alignItems:'center',
           }}>
-            <span style={{ fontSize:13, color:'#9CA3AF', fontWeight:700, letterSpacing:'0.04em' }}>
+            <span style={{ fontSize:13, color:'#F9FAFB', fontWeight:700, letterSpacing:'0.04em' }}>
               {tab.rows.length} ROWS · {tab.customer?.name || '—'}
             </span>
             {isDone && <span style={{ fontSize:13, color:'#10B981', fontWeight:600 }}>✓ Ready to copy</span>}
@@ -571,7 +571,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
           background:'#0D1117', border:'1px solid #065F46',
           borderRadius:14, padding:18, display:'flex', flexDirection:'column', gap:10,
         }}>
-          <div style={{ fontSize:14, color:'#9CA3AF' }}>
+          <div style={{ fontSize:14, color:'#F9FAFB' }}>
             {tab.rows.filter(r=>r.name||r.trackingId).length} rows ready for <strong style={{ color:'#F9FAFB' }}>{tab.customer.name}</strong>
           </div>
 
@@ -592,7 +592,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
               style={{
                 display:'block', width:'100%', padding:'13px 20px',
                 background:'transparent', border:'1px solid #374151',
-                borderRadius:12, color:'#9CA3AF', fontSize:14, fontWeight:600,
+                borderRadius:12, color:'#F9FAFB', fontSize:14, fontWeight:600,
                 textDecoration:'none', textAlign:'center',
               }}
             >
@@ -638,8 +638,8 @@ function fileToBase64(file) {
   });
 }
 
-const labelStyle   = { fontSize:12, color:'#9CA3AF', fontWeight:700, letterSpacing:'0.06em' };
+const labelStyle   = { fontSize:12, color:'#F9FAFB', fontWeight:700, letterSpacing:'0.06em' };
 const inputStyle   = { width:'100%', marginTop:8, padding:'12px 14px', background:'#1F2937', border:'1px solid #374151', borderRadius:10, color:'#F9FAFB', fontSize:15 };
-const thStyle      = { padding:'11px 14px', textAlign:'left', fontSize:12, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.06em', textTransform:'uppercase', borderBottom:'1px solid #1F2937' };
+const thStyle      = { padding:'11px 14px', textAlign:'left', fontSize:12, fontWeight:700, color:'#F9FAFB', letterSpacing:'0.06em', textTransform:'uppercase', borderBottom:'1px solid #1F2937' };
 const tdStyle      = { padding:'4px 8px', verticalAlign:'middle' };
 const btnSecondary = { padding:'10px 16px', background:'#1F2937', color:'#D1D5DB', border:'1px solid #374151', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' };
