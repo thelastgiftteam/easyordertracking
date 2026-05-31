@@ -5,18 +5,15 @@ const CSM_USERNAME = 'csmstebin';
 const CSM_PASSWORD = '11421';
 const CSM_SECRET   = 'flashtrack_csm';
 const HQ_ENDPOINT  = '/api/hq-proxy';
+const MAX_TABS     = 5;
 
-const MAX_TABS = 5;
-
-// ═══════════════════════════════════════════════════════════════
-// TAB STATUS
-const S = { IDLE: 'idle', EXTRACTING: 'extracting', DONE: 'done', PUSHING: 'pushing', PUSHED: 'pushed', ERROR: 'error' };
+const S = { IDLE:'idle', EXTRACTING:'extracting', DONE:'done', ERROR:'error' };
 
 function emptyTab(id) {
-  return { id, customer: null, rows: [], status: S.IDLE, progress: { done: 0, total: 0 }, error: '' };
+  return { id, customer:null, rows:[], status:S.IDLE, progress:{ done:0, total:0 }, error:'' };
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 export default function OCRPage() {
   const [authed,   setAuthed]   = useState(false);
   const [checking, setChecking] = useState(true);
@@ -60,9 +57,9 @@ export default function OCRPage() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // LOGIN
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 function LoginScreen({ onSuccess }) {
   const [u, setU] = useState('');
   const [p, setP] = useState('');
@@ -106,8 +103,8 @@ function LoginScreen({ onSuccess }) {
             width:'100%', marginTop:18, padding:'12px 20px',
             background:'linear-gradient(135deg,#1a3a8f,#1D4ED8)',
             color:'#fff', fontSize:14, fontWeight:700,
-            border:'none', borderRadius:12, cursor: loading?'default':'pointer',
-            opacity: loading?0.7:1, transition:'opacity 0.2s',
+            border:'none', borderRadius:12, cursor:loading?'default':'pointer',
+            opacity:loading?0.7:1, transition:'opacity 0.2s',
           }}>
             {loading ? 'Signing in…' : 'Sign In →'}
           </button>
@@ -117,16 +114,15 @@ function LoginScreen({ onSuccess }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // DASHBOARD
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 function Dashboard({ onLogout }) {
   const [tabs,        setTabs]        = useState(() => Array.from({length:MAX_TABS}, (_,i) => emptyTab(i+1)));
   const [activeTab,   setActiveTab]   = useState(1);
   const [customers,   setCustomers]   = useState([]);
   const [loadingCust, setLoadingCust] = useState(true);
 
-  // Load customer list on mount
   useEffect(() => {
     fetch(`${HQ_ENDPOINT}?action=getCustomers&secret=${CSM_SECRET}`)
       .then(r => r.json())
@@ -142,99 +138,82 @@ function Dashboard({ onLogout }) {
 
   return (
     <div style={{ display:'flex', minHeight:'100vh' }}>
-
-      {/* ── LEFT SIDEBAR ── */}
+      {/* SIDEBAR */}
       <aside style={{
         width:200, flexShrink:0, background:'#080D14',
         borderRight:'1px solid #1F2937',
         display:'flex', flexDirection:'column',
         position:'sticky', top:0, height:'100vh',
       }}>
-        {/* Logo */}
         <div style={{ padding:'20px 16px 14px', borderBottom:'1px solid #1F2937' }}>
           <div style={{
             fontSize:16, fontWeight:800, fontFamily:"'Syne',sans-serif",
             background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-            letterSpacing:'-0.3px',
           }}>⚡ FlashTrack</div>
           <div style={{ fontSize:10, color:'#4B5563', marginTop:2 }}>CSM Dashboard</div>
         </div>
 
-        {/* Tab list */}
         <div style={{ flex:1, padding:'10px 8px', display:'flex', flexDirection:'column', gap:4 }}>
           <div style={{ fontSize:9, color:'#4B5563', fontWeight:700, letterSpacing:'0.08em', padding:'4px 8px', marginBottom:2 }}>TASKS</div>
           {tabs.map(tab => (
-            <TabButton
-              key={tab.id}
-              tab={tab}
-              active={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-            />
+            <TabButton key={tab.id} tab={tab} active={activeTab===tab.id} onClick={() => setActiveTab(tab.id)} />
           ))}
         </div>
 
-        {/* Logout */}
         <div style={{ padding:'12px 8px', borderTop:'1px solid #1F2937' }}>
           <button onClick={onLogout} style={{
-            width:'100%', padding:'8px 12px',
-            background:'transparent', border:'1px solid #374151',
-            borderRadius:8, color:'#6B7280', fontSize:11,
-            cursor:'pointer', textAlign:'left',
+            width:'100%', padding:'8px 12px', background:'transparent',
+            border:'1px solid #374151', borderRadius:8, color:'#6B7280',
+            fontSize:11, cursor:'pointer', textAlign:'left',
           }}>← Logout</button>
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* MAIN */}
       <main style={{ flex:1, padding:24, overflowY:'auto', animation:'fadeIn 0.3s ease' }}>
         {currentTab && (
-          <TabContent
-            tab={currentTab}
-            customers={customers}
-            loadingCust={loadingCust}
-            updateTab={updateTab}
-          />
+          <TabContent tab={currentTab} customers={customers} loadingCust={loadingCust} updateTab={updateTab} />
         )}
       </main>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// TAB BUTTON (sidebar)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// TAB BUTTON
+// ═══════════════════════════════════════════════════════
 function TabButton({ tab, active, onClick }) {
-  const statusIcon = {
-    [S.IDLE]:       <span style={{ width:8,height:8,borderRadius:'50%',background:'#374151',display:'inline-block' }} />,
-    [S.EXTRACTING]: <span style={{ width:8,height:8,borderRadius:'50%',background:'#F59E0B',display:'inline-block',animation:'pulse 1s infinite' }} />,
-    [S.DONE]:       <span style={{ width:8,height:8,borderRadius:'50%',background:'#10B981',display:'inline-block' }} />,
-    [S.PUSHING]:    <span style={{ width:8,height:8,borderRadius:'50%',background:'#60A5FA',display:'inline-block',animation:'pulse 1s infinite' }} />,
-    [S.PUSHED]:     <span style={{ fontSize:10 }}>✅</span>,
+  const dot = (color, pulse) => (
+    <span style={{ width:8, height:8, borderRadius:'50%', background:color,
+      display:'inline-block', animation: pulse ? 'pulse 1s infinite' : 'none' }} />
+  );
+  const icon = {
+    [S.IDLE]:       dot('#374151', false),
+    [S.EXTRACTING]: dot('#F59E0B', true),
+    [S.DONE]:       dot('#10B981', false),
     [S.ERROR]:      <span style={{ fontSize:10 }}>⚠️</span>,
   }[tab.status];
 
-  const label = tab.customer ? tab.customer.name : `Task ${tab.id}`;
   const sublabel = {
     [S.IDLE]:       'Empty',
     [S.EXTRACTING]: `${tab.progress.done}/${tab.progress.total} extracting…`,
     [S.DONE]:       `${tab.rows.length} rows ready`,
-    [S.PUSHING]:    'Pushing…',
-    [S.PUSHED]:     'Pushed ✓',
     [S.ERROR]:      'Error',
   }[tab.status];
 
   return (
     <button onClick={onClick} style={{
       width:'100%', padding:'8px 10px', borderRadius:8,
-      background: active ? '#0D1117' : 'transparent',
-      border: active ? '1px solid #1F2937' : '1px solid transparent',
+      background:active?'#0D1117':'transparent',
+      border:active?'1px solid #1F2937':'1px solid transparent',
       cursor:'pointer', textAlign:'left', transition:'all 0.15s',
     }}>
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        {statusIcon}
-        <span style={{ fontSize:12, fontWeight:600, color: active?'#F9FAFB':'#9CA3AF',
+        {icon}
+        <span style={{ fontSize:12, fontWeight:600, color:active?'#F9FAFB':'#9CA3AF',
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>
-          {label}
+          {tab.customer ? tab.customer.name : `Task ${tab.id}`}
         </span>
       </div>
       <div style={{ fontSize:10, color:'#4B5563', marginTop:2, paddingLeft:16 }}>{sublabel}</div>
@@ -242,17 +221,16 @@ function TabButton({ tab, active, onClick }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// CUSTOMER SEARCH — searchable dropdown
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// CUSTOMER SEARCH
+// ═══════════════════════════════════════════════════════
 function CustomerSearch({ customers, selected, onSelect, disabled }) {
-  const [query,  setQuery]  = useState('');
-  const [open,   setOpen]   = useState(false);
+  const [query, setQuery] = useState('');
+  const [open,  setOpen]  = useState(false);
   const ref = useRef();
 
   const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(query.toLowerCase()) ||
-    c.code.includes(query)
+    c.name.toLowerCase().includes(query.toLowerCase()) || c.code.includes(query)
   );
 
   useEffect(() => {
@@ -269,64 +247,43 @@ function CustomerSearch({ customers, selected, onSelect, disabled }) {
         onClick={() => { if (!disabled) setOpen(o => !o); }}
         style={{
           width:'100%', padding:'10px 12px',
-          background:'#1F2937', border:`1px solid ${open ? '#1D4ED8' : '#374151'}`,
-          borderRadius:10, color: selected ? '#F9FAFB' : '#6B7280',
-          fontSize:14, fontWeight:600, cursor: disabled ? 'default' : 'pointer',
+          background:'#1F2937', border:`1px solid ${open?'#1D4ED8':'#374151'}`,
+          borderRadius:10, color:selected?'#F9FAFB':'#6B7280',
+          fontSize:14, fontWeight:600, cursor:disabled?'default':'pointer',
           display:'flex', justifyContent:'space-between', alignItems:'center',
-          transition:'border-color 0.15s',
         }}
       >
         <span>{selected ? selected.name : '— Select a customer —'}</span>
-        <span style={{ fontSize:10, color:'#6B7280' }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize:10, color:'#6B7280' }}>{open?'▲':'▼'}</span>
       </div>
-
       {open && (
         <div style={{
           position:'absolute', top:'calc(100% + 6px)', left:0, right:0,
           background:'#1F2937', border:'1px solid #374151', borderRadius:10,
           zIndex:100, overflow:'hidden', boxShadow:'0 8px 32px #00000060',
         }}>
-          {/* Search input */}
           <div style={{ padding:'8px 10px', borderBottom:'1px solid #374151' }}>
-            <input
-              autoFocus
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
+            <input autoFocus type="text" value={query} onChange={e=>setQuery(e.target.value)}
               placeholder="Search customer..."
-              style={{
-                width:'100%', padding:'8px 10px',
-                background:'#111827', border:'1px solid #374151',
-                borderRadius:8, color:'#F9FAFB', fontSize:13,
-                fontFamily:"'DM Sans',sans-serif",
-              }}
-            />
+              style={{ width:'100%', padding:'8px 10px', background:'#111827',
+                border:'1px solid #374151', borderRadius:8, color:'#F9FAFB', fontSize:13 }} />
           </div>
-
-          {/* Results */}
           <div style={{ maxHeight:200, overflowY:'auto' }}>
-            {filtered.length === 0 ? (
-              <div style={{ padding:'12px 14px', fontSize:13, color:'#6B7280' }}>
-                No customers found
-              </div>
-            ) : filtered.map(c => (
-              <div
-                key={c.code}
-                onClick={() => { onSelect(c); setOpen(false); setQuery(''); }}
-                style={{
-                  padding:'10px 14px', cursor:'pointer',
-                  background: selected?.code === c.code ? '#1D4ED820' : 'transparent',
-                  borderBottom:'1px solid #37415130',
-                  display:'flex', justifyContent:'space-between', alignItems:'center',
-                  transition:'background 0.1s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#374151'}
-                onMouseLeave={e => e.currentTarget.style.background = selected?.code === c.code ? '#1D4ED820' : 'transparent'}
-              >
-                <span style={{ fontSize:13, fontWeight:600, color:'#F9FAFB' }}>{c.name}</span>
-                <span style={{ fontSize:11, color:'#4B5563', fontFamily:'monospace' }}>{c.code}</span>
-              </div>
-            ))}
+            {filtered.length === 0
+              ? <div style={{ padding:'12px 14px', fontSize:13, color:'#6B7280' }}>No customers found</div>
+              : filtered.map(c => (
+                <div key={c.code}
+                  onClick={() => { onSelect(c); setOpen(false); setQuery(''); }}
+                  style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #37415130',
+                    display:'flex', justifyContent:'space-between', alignItems:'center' }}
+                  onMouseEnter={e => e.currentTarget.style.background='#374151'}
+                  onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                >
+                  <span style={{ fontSize:13, fontWeight:600, color:'#F9FAFB' }}>{c.name}</span>
+                  <span style={{ fontSize:11, color:'#4B5563', fontFamily:'monospace' }}>{c.code}</span>
+                </div>
+              ))
+            }
           </div>
         </div>
       )}
@@ -334,14 +291,18 @@ function CustomerSearch({ customers, selected, onSelect, disabled }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // TAB CONTENT
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 function TabContent({ tab, customers, loadingCust, updateTab }) {
   const fileInputRef = useRef();
-  const [pushError,  setPushError]  = useState('');
-  const [pushMsg,    setPushMsg]    = useState('');
   const [copied, setCopied] = useState(false);
+
+  const setCustomer    = (customer) => updateTab(tab.id, { customer, status:S.IDLE, rows:[], error:'' });
+  const reset          = ()         => updateTab(tab.id, emptyTab(tab.id));
+  const updateRow      = (id, f, v) => updateTab(tab.id, { rows: tab.rows.map(r => r.id===id ? {...r,[f]:v} : r) });
+  const removeRow      = (id)       => updateTab(tab.id, { rows: tab.rows.filter(r => r.id!==id) });
+  const addRow         = ()         => updateTab(tab.id, { rows: [...tab.rows, {id:Date.now(),name:'',pincode:'',trackingId:'',error:''}] });
 
   const copyAsTSV = async () => {
     const tsv = tab.rows
@@ -355,86 +316,45 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
     } catch { alert('Copy failed — select table manually'); }
   };
 
-  const setCustomer = (customer) => updateTab(tab.id, { customer, status: S.IDLE, rows:[], error:'' });
-
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
     if (!files.length) return;
     if (!tab.customer) { alert('Please select a customer first'); return; }
 
-    updateTab(tab.id, { status: S.EXTRACTING, progress:{ done:0, total:files.length }, rows:[], error:'' });
+    updateTab(tab.id, { status:S.EXTRACTING, progress:{ done:0, total:files.length }, rows:[], error:'' });
 
     const extracted = [];
     for (let i = 0; i < files.length; i++) {
       try {
         const base64 = await fileToBase64(files[i]);
         const res    = await fetch('/api/extract', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ image: base64, mimeType: files[i].type }),
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ image:base64, mimeType:files[i].type }),
         });
         const data = await res.json();
         extracted.push({
-          id:         Date.now() + i,
+          id: Date.now()+i,
           name:       data.result?.name       || '',
           pincode:    data.result?.pincode    || '',
           trackingId: data.result?.trackingId || '',
           error:      data.success ? '' : (data.error || 'Failed'),
         });
       } catch (err) {
-        extracted.push({ id: Date.now()+i, name:'', pincode:'', trackingId:'', error: err.message });
+        extracted.push({ id:Date.now()+i, name:'', pincode:'', trackingId:'', error:err.message });
       }
-      updateTab(tab.id, { progress:{ done: i+1, total: files.length } });
+      updateTab(tab.id, { progress:{ done:i+1, total:files.length } });
     }
 
-    updateTab(tab.id, { rows: extracted, status: S.DONE });
+    updateTab(tab.id, { rows:extracted, status:S.DONE });
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const updateRow  = (id, field, val) => updateTab(tab.id, { rows: tab.rows.map(r => r.id===id ? {...r,[field]:val} : r) });
-  const removeRow  = (id)            => updateTab(tab.id, { rows: tab.rows.filter(r => r.id!==id) });
-  const addRow     = ()              => updateTab(tab.id, { rows: [...tab.rows, {id:Date.now(),name:'',pincode:'',trackingId:'',error:''}] });
-  const reset      = ()              => updateTab(tab.id, emptyTab(tab.id));
-
-  const pushToSheet = async () => {
-    if (!tab.customer) return;
-    if (tab.rows.length === 0) return;
-
-    setPushError('');
-    setPushMsg('');
-    updateTab(tab.id, { status: S.PUSHING });
-
-    try {
-      const res = await fetch(HQ_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({
-          action: 'pushRows',
-          secret: CSM_SECRET,
-          code:   tab.customer.code,
-          rows:   tab.rows.filter(r => r.name || r.trackingId),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        updateTab(tab.id, { status: S.PUSHED });
-        setPushMsg(`✅ ${data.pushed} rows pushed to ${tab.customer.name}`);
-      } else {
-        updateTab(tab.id, { status: S.ERROR, error: data.error || 'Push failed' });
-        setPushError(data.error || 'Push failed');
-      }
-    } catch (err) {
-      updateTab(tab.id, { status: S.ERROR, error: err.message });
-      setPushError(err.message);
-    }
-  };
-
-  const isDone    = tab.status === S.DONE;
-  const isPushed  = tab.status === S.PUSHED;
+  const isDone       = tab.status === S.DONE;
   const isExtracting = tab.status === S.EXTRACTING;
 
   return (
     <div style={{ maxWidth:860, animation:'fadeIn 0.3s ease' }}>
+
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
         <div>
@@ -445,65 +365,52 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
             letterSpacing:'-0.4px',
           }}>Task {tab.id}</h2>
           <p style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>
-            {isPushed ? 'Done! Start a new task or close.' : 'Select customer → drop images → confirm → push'}
+            Select customer → drop images → copy table → paste in sheet
           </p>
         </div>
-        {(isDone || isPushed) && (
-          <button onClick={reset} style={btnSecondary}>↺ Reset</button>
-        )}
+        {isDone && <button onClick={reset} style={btnSecondary}>↺ Reset</button>}
       </div>
 
-      {/* Customer dropdown */}
-      <div style={{
-        background:'#0D1117', border:'1px solid #1F2937',
-        borderRadius:14, padding:16, marginBottom:16,
-      }}>
+      {/* Customer selector */}
+      <div style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:14, padding:16, marginBottom:16 }}>
         <label style={{ ...labelStyle, display:'block', marginBottom:8 }}>CUSTOMER</label>
-        {loadingCust ? (
-          <div style={{ fontSize:13, color:'#6B7280' }}>Loading customers…</div>
-        ) : (
-          <CustomerSearch
-            customers={customers}
-            selected={tab.customer}
-            onSelect={setCustomer}
-            disabled={isPushed}
-          />
-        )}
+        {loadingCust
+          ? <div style={{ fontSize:13, color:'#6B7280' }}>Loading customers…</div>
+          : <CustomerSearch customers={customers} selected={tab.customer} onSelect={setCustomer} disabled={false} />
+        }
       </div>
 
       {/* Drop zone */}
-      {!isPushed && (
-        <div
-          onDragOver={e => e.preventDefault()}
-          onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-          onClick={() => !isExtracting && fileInputRef.current?.click()}
-          style={{
-            border:`2px dashed ${isExtracting ? '#F59E0B' : '#374151'}`,
-            borderRadius:14, padding:'32px 20px', textAlign:'center',
-            background: isExtracting ? '#0D1117' : '#080D14',
-            cursor: isExtracting ? 'default' : 'pointer',
-            marginBottom:16, transition:'all 0.2s',
-          }}
-        >
-          <div style={{ fontSize:32, marginBottom:8 }}>
-            {isExtracting
-              ? <span style={{ display:'inline-block', animation:'spin 0.8s linear infinite' }}>⟳</span>
-              : '📸'
-            }
-          </div>
-          <div style={{ fontSize:14, fontWeight:600, color:'#F9FAFB', marginBottom:4 }}>
-            {isExtracting
-              ? `Extracting ${tab.progress.done} of ${tab.progress.total} images…`
-              : 'Drop tracking slip images here'
-            }
-          </div>
-          {!isExtracting && (
-            <div style={{ fontSize:12, color:'#6B7280' }}>Click to browse · PNG or JPG · Multiple at once</div>
-          )}
-          <input ref={fileInputRef} type="file" accept="image/*" multiple
-            onChange={e => handleFiles(e.target.files)} style={{ display:'none' }} />
+      <div
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+        onClick={() => !isExtracting && fileInputRef.current?.click()}
+        style={{
+          border:`2px dashed ${isExtracting?'#F59E0B':'#374151'}`,
+          borderRadius:14, padding:'32px 20px', textAlign:'center',
+          background:isExtracting?'#0D1117':'#080D14',
+          cursor:isExtracting?'default':'pointer',
+          marginBottom:16, transition:'all 0.2s',
+        }}
+      >
+        <div style={{ fontSize:32, marginBottom:8 }}>
+          {isExtracting
+            ? <span style={{ display:'inline-block', animation:'spin 0.8s linear infinite' }}>⟳</span>
+            : '📸'
+          }
         </div>
-      )}
+        <div style={{ fontSize:14, fontWeight:600, color:'#F9FAFB', marginBottom:4 }}>
+          {isExtracting
+            ? `Extracting ${tab.progress.done} of ${tab.progress.total} images…`
+            : 'Drop tracking slip images here'
+          }
+        </div>
+        {!isExtracting && (
+          <div style={{ fontSize:12, color:'#6B7280' }}>Click to browse · PNG or JPG · Multiple at once</div>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" multiple
+          onChange={e => handleFiles(e.target.files)} style={{ display:'none' }} />
+      </div>
 
       {/* Extracted table */}
       {tab.rows.length > 0 && (
@@ -515,8 +422,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
             <span style={{ fontSize:11, color:'#9CA3AF', fontWeight:700, letterSpacing:'0.06em' }}>
               {tab.rows.length} ROWS · {tab.customer?.name || '—'}
             </span>
-            {isDone && <span style={{ fontSize:11, color:'#10B981', fontWeight:600 }}>✓ Ready to push</span>}
-            {isPushed && <span style={{ fontSize:11, color:'#10B981', fontWeight:600 }}>✅ Pushed to sheet</span>}
+            {isDone && <span style={{ fontSize:11, color:'#10B981', fontWeight:600 }}>✓ Ready</span>}
           </div>
 
           <div style={{ overflowX:'auto' }}>
@@ -533,21 +439,18 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
               <tbody>
                 {tab.rows.map((row, i) => (
                   <tr key={row.id} style={{
-                    background: row.error ? '#1C0A0A' : (i%2===0 ? '#0D1117' : '#0F141C'),
+                    background:row.error?'#1C0A0A':(i%2===0?'#0D1117':'#0F141C'),
                     borderTop:'1px solid #1F2937',
-                    opacity: isPushed ? 0.6 : 1,
                   }}>
                     <td style={{ ...tdStyle, color:'#4B5563', fontSize:11, textAlign:'center', width:32 }}>{i+1}</td>
-                    <td style={tdStyle}><CellInput value={row.name}       onChange={v=>updateRow(row.id,'name',v)}       disabled={isPushed} /></td>
-                    <td style={tdStyle}><CellInput value={row.pincode}    onChange={v=>updateRow(row.id,'pincode',v)}    disabled={isPushed} mono /></td>
-                    <td style={tdStyle}><CellInput value={row.trackingId} onChange={v=>updateRow(row.id,'trackingId',v)} disabled={isPushed} mono /></td>
+                    <td style={tdStyle}><CellInput value={row.name}       onChange={v=>updateRow(row.id,'name',v)} /></td>
+                    <td style={tdStyle}><CellInput value={row.pincode}    onChange={v=>updateRow(row.id,'pincode',v)} mono /></td>
+                    <td style={tdStyle}><CellInput value={row.trackingId} onChange={v=>updateRow(row.id,'trackingId',v)} mono /></td>
                     <td style={{ ...tdStyle, textAlign:'center' }}>
-                      {!isPushed && (
-                        <button onClick={()=>removeRow(row.id)} style={{
-                          background:'transparent', border:'none',
-                          color:'#6B7280', cursor:'pointer', fontSize:16, padding:4,
-                        }}>×</button>
-                      )}
+                      <button onClick={()=>removeRow(row.id)} style={{
+                        background:'transparent', border:'none',
+                        color:'#6B7280', cursor:'pointer', fontSize:16, padding:4,
+                      }}>×</button>
                     </td>
                   </tr>
                 ))}
@@ -555,133 +458,78 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
             </table>
           </div>
 
-          {!isPushed && (
-            <div style={{ padding:12, borderTop:'1px solid #1F2937', display:'flex', gap:8 }}>
-              <button onClick={addRow} style={btnSecondary}>+ Add Row</button>
-            </div>
-          )}
+          <div style={{ padding:12, borderTop:'1px solid #1F2937', display:'flex', gap:8 }}>
+            <button onClick={addRow} style={btnSecondary}>+ Add Row</button>
+          </div>
         </div>
       )}
 
-      {/* Errors */}
-      {pushError && (
-        <div style={{ padding:12, marginBottom:12, background:'#1C0A0A', border:'1px solid #7F1D1D40', borderRadius:10, color:'#FCA5A5', fontSize:12 }}>
-          ⚠️ {pushError}
-        </div>
-      )}
-      {pushMsg && (
-        <div style={{ padding:12, marginBottom:12, background:'#022c22', border:'1px solid #05966940', borderRadius:10, color:'#6EE7B7', fontSize:12 }}>
-          {pushMsg}
-        </div>
-      )}
-
-      {/* CONFIRM + PUSH button */}
+      {/* Copy + Open Sheet */}
       {isDone && tab.rows.length > 0 && tab.customer && (
         <div style={{
           background:'#0D1117', border:'1px solid #065F46',
-          borderRadius:14, padding:16,
+          borderRadius:14, padding:16, display:'flex', flexDirection:'column', gap:8,
         }}>
-          <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:12 }}>
-            Confirm before pushing:
+          <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:4 }}>
+            {tab.rows.filter(r=>r.name||r.trackingId).length} rows ready for {tab.customer.name}
           </div>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16 }}>
-            <div style={{
-              padding:'6px 14px', background:'#1F2937', borderRadius:8,
-              fontSize:13, fontWeight:700, color:'#F9FAFB',
-            }}>
-              📦 {tab.customer.name}
-            </div>
-            <div style={{ fontSize:13, color:'#6B7280' }}>→</div>
-            <div style={{
-              padding:'6px 14px', background:'#052e16', border:'1px solid #05966940',
-              borderRadius:8, fontSize:13, fontWeight:600, color:'#10B981',
-            }}>
-              {tab.rows.filter(r=>r.name||r.trackingId).length} rows will be added
-            </div>
-          </div>
-         {isDone && tab.rows.length > 0 && tab.customer && (
-  <div style={{
-    background:'#0D1117', border:'1px solid #065F46',
-    borderRadius:14, padding:16,
-  }}>
-    <div style={{ fontSize:13, color:'#9CA3AF', marginBottom:12 }}>
-      Ready · {tab.rows.filter(r=>r.name||r.trackingId).length} rows for {tab.customer.name}
-    </div>
-    <button onClick={copyAsTSV} style={{
-      width:'100%', padding:'13px 20px',
-      background:'linear-gradient(135deg,#047857,#10B981)',
-      color:'#fff', fontSize:15, fontWeight:800,
-      border:'none', borderRadius:12, cursor:'pointer',
-      marginBottom:8,
-    }}>
-      {copied ? '✓ Copied!' : '📋 Copy Table'}
-    </button>
-    {tab.customer?.sheetUrl && (
-      
-        href={tab.customer.sheetUrl}
-        target="_blank" rel="noreferrer"
-        style={{
-          display:'block', width:'100%', padding:'11px 20px',
-          background:'transparent', border:'1px solid #374151',
-          borderRadius:12, color:'#9CA3AF', fontSize:13, fontWeight:600,
-          textDecoration:'none', textAlign:'center',
-        }}
-      >
-        📄 Open {tab.customer.name} Sheet
-      </a>
-    )}
-  </div>
-)}
-        </div>
-      )}
 
-      {isPushed && (
-        <div style={{
-          padding:'20px 16px', background:'linear-gradient(135deg,#022c22,#064E3B)',
-          border:'1px solid #059669', borderRadius:14, textAlign:'center',
-        }}>
-          <div style={{ fontSize:28, marginBottom:6 }}>🎉</div>
-          <div style={{ fontSize:15, fontWeight:800, color:'#10B981', fontFamily:"'Syne',sans-serif" }}>
-            {pushMsg || 'Pushed successfully!'}
-          </div>
-          <div style={{ fontSize:12, color:'#6EE7B7', marginTop:4 }}>
-            Orders are now live on the tracking page.
-          </div>
-          <button onClick={reset} style={{ ...btnSecondary, marginTop:14 }}>
-            Start Next Customer
+          <button onClick={copyAsTSV} style={{
+            width:'100%', padding:'13px 20px',
+            background: copied
+              ? 'linear-gradient(135deg,#047857,#10B981)'
+              : 'linear-gradient(135deg,#1a3a8f,#1D4ED8)',
+            color:'#fff', fontSize:14, fontWeight:800,
+            border:'none', borderRadius:12, cursor:'pointer',
+            transition:'background 0.3s',
+          }}>
+            {copied ? '✅ Copied! Now paste in the sheet' : '📋 Copy Table'}
           </button>
+
+          {tab.customer?.sheetUrl && (
+            <a
+              href={tab.customer.sheetUrl}
+              target="_blank" rel="noreferrer"
+              style={{
+                display:'block', width:'100%', padding:'11px 20px',
+                background:'transparent', border:'1px solid #374151',
+                borderRadius:12, color:'#9CA3AF', fontSize:13, fontWeight:600,
+                textDecoration:'none', textAlign:'center',
+              }}
+            >
+              📄 Open {tab.customer.name} Sheet
+            </a>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // CELL INPUT
-// ═══════════════════════════════════════════════════════════════
-function CellInput({ value, onChange, mono, disabled }) {
+// ═══════════════════════════════════════════════════════
+function CellInput({ value, onChange, mono }) {
   return (
     <input
       value={value||''} onChange={e=>onChange(e.target.value)}
-      disabled={disabled}
       style={{
         width:'100%', padding:'6px 8px',
         background:'transparent', border:'1px solid transparent',
-        borderRadius:6, color: disabled ? '#6B7280' : '#F9FAFB',
-        fontSize:13, fontFamily: mono ? 'monospace' : "'DM Sans',sans-serif",
-        fontWeight: mono ? 700 : 500,
-        letterSpacing: mono ? '0.3px' : '0',
-        transition:'all 0.15s', cursor: disabled ? 'default' : 'text',
+        borderRadius:6, color:'#F9FAFB',
+        fontSize:13, fontFamily:mono?'monospace':"'DM Sans',sans-serif",
+        fontWeight:mono?700:500, letterSpacing:mono?'0.3px':'0',
+        transition:'all 0.15s',
       }}
-      onFocus={e => { if(!disabled){ e.target.style.background='#1F2937'; e.target.style.borderColor='#1D4ED8'; }}}
+      onFocus={e => { e.target.style.background='#1F2937'; e.target.style.borderColor='#1D4ED8'; }}
       onBlur={e  => { e.target.style.background='transparent'; e.target.style.borderColor='transparent'; }}
     />
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // HELPERS
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 function fileToBase64(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
@@ -691,8 +539,8 @@ function fileToBase64(file) {
   });
 }
 
-const labelStyle = { fontSize:10, color:'#9CA3AF', fontWeight:700, letterSpacing:'0.06em' };
-const inputStyle = { width:'100%', marginTop:6, padding:'10px 12px', background:'#1F2937', border:'1px solid #374151', borderRadius:10, color:'#F9FAFB', fontSize:14 };
-const thStyle    = { padding:'9px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.08em', textTransform:'uppercase', borderBottom:'1px solid #1F2937' };
-const tdStyle    = { padding:'3px 8px', verticalAlign:'middle' };
+const labelStyle   = { fontSize:10, color:'#9CA3AF', fontWeight:700, letterSpacing:'0.06em' };
+const inputStyle   = { width:'100%', marginTop:6, padding:'10px 12px', background:'#1F2937', border:'1px solid #374151', borderRadius:10, color:'#F9FAFB', fontSize:14 };
+const thStyle      = { padding:'9px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.08em', textTransform:'uppercase', borderBottom:'1px solid #1F2937' };
+const tdStyle      = { padding:'3px 8px', verticalAlign:'middle' };
 const btnSecondary = { padding:'8px 14px', background:'#1F2937', color:'#D1D5DB', border:'1px solid #374151', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' };
