@@ -87,7 +87,7 @@ function LoginScreen({ onSuccess }) {
           <div style={{ fontSize:48, marginBottom:12 }}>⚡</div>
           <h1 style={{
             fontSize:30, fontWeight:800, fontFamily:"'Syne',sans-serif",
-            background:'linear-gradient(135deg,#F9FAFB,#F9FAFB)',
+            background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
             letterSpacing:'-0.5px', marginBottom:6,
           }}>FlashTrack CSM</h1>
@@ -121,7 +121,7 @@ function LoginScreen({ onSuccess }) {
 // ═══════════════════════════════════════════════════════
 // CUSTOMER SHEET PANEL
 // ═══════════════════════════════════════════════════════
-function CustomerSheetPanel({ customers }) {
+function CustomerSheetPanel({ customers, onSelectCustomer, activeCustomerCode }) {
   const [open,  setOpen]  = useState(false);
   const [query, setQuery] = useState('');
 
@@ -166,23 +166,23 @@ function CustomerSheetPanel({ customers }) {
             {filtered.length === 0
               ? <div style={{ fontSize:13, color:'#4B5563', padding:'8px 10px' }}>No results</div>
               : filtered.map(c => (
-                c.sheetUrl
-                  ? <a key={c.code} href={c.sheetUrl} target="_blank" rel="noreferrer"
-                      style={{
-                        display:'block', padding:'9px 12px', borderRadius:8,
-                        textDecoration:'none', background:'transparent',
-                        fontSize:13, fontWeight:600, color:'#F9FAFB',
-                        whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                        transition:'all 0.15s',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background='#1F2937'; e.currentTarget.style.color='#F9FAFB'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#F9FAFB'; }}
-                    >
-                      📊 {c.name}
-                    </a>
-                  : <span key={c.code} style={{ display:'block', padding:'9px 12px', fontSize:13, color:'#4B5563' }}>
-                      {c.name}
-                    </span>
+                <button
+                  key={c.code}
+                  onClick={() => { onSelectCustomer(c); setOpen(false); }}
+                  style={{
+                    display:'block', width:'100%', padding:'9px 12px', borderRadius:8,
+                    background: activeCustomerCode === c.code ? '#0D1117' : 'transparent',
+                    border: activeCustomerCode === c.code ? '1px solid #1F2937' : '1px solid transparent',
+                    fontSize:13, fontWeight:600, color:'#F9FAFB',
+                    textAlign:'left', cursor:'pointer',
+                    whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                    transition:'all 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background='#1F2937'}
+                  onMouseLeave={e => { e.currentTarget.style.background = activeCustomerCode === c.code ? '#0D1117' : 'transparent'; }}
+                >
+                  📊 {c.name}
+                </button>
               ))
             }
           </div>
@@ -199,7 +199,9 @@ function Dashboard({ onLogout }) {
   const [tabs,        setTabs]        = useState(() => Array.from({length:MAX_TABS}, (_,i) => emptyTab(i+1)));
   const [activeTab,   setActiveTab]   = useState(1);
   const [customers,   setCustomers]   = useState([]);
-  const [loadingCust, setLoadingCust] = useState(true);
+  const [loadingCust,  setLoadingCust]  = useState(true);
+  const [view,         setView]         = useState('task');
+  const [customerView, setCustomerView] = useState(null);
 
   useEffect(() => {
     fetch(`${HQ_ENDPOINT}?action=getCustomers&secret=${CSM_SECRET}`)
@@ -227,7 +229,7 @@ function Dashboard({ onLogout }) {
         <div style={{ padding:'22px 18px 16px', borderBottom:'1px solid #1F2937' }}>
           <div style={{
             fontSize:18, fontWeight:800, fontFamily:"'Syne',sans-serif",
-            background:'linear-gradient(135deg,#F9FAFB,#F9FAFB)',
+            background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
           }}>⚡ FlashTrack</div>
           <div style={{ fontSize:12, color:'#4B5563', marginTop:3 }}>CSM Dashboard</div>
@@ -237,12 +239,16 @@ function Dashboard({ onLogout }) {
         <div style={{ flex:1, padding:'12px 10px', display:'flex', flexDirection:'column', gap:4, overflowY:'auto' }}>
           <div style={{ fontSize:11, color:'#4B5563', fontWeight:700, letterSpacing:'0.06em', padding:'4px 8px', marginBottom:4 }}>TASKS</div>
           {tabs.map(tab => (
-            <TabButton key={tab.id} tab={tab} active={activeTab===tab.id} onClick={() => setActiveTab(tab.id)} />
+            <TabButton key={tab.id} tab={tab} active={view==='task' && activeTab===tab.id} onClick={() => { setActiveTab(tab.id); setView('task'); }} />
           ))}
         </div>
 
         {/* Customer Sheets */}
-        <CustomerSheetPanel customers={customers} />
+        <CustomerSheetPanel
+          customers={customers}
+          onSelectCustomer={c => { setCustomerView(c); setView('customer'); }}
+          activeCustomerCode={view === 'customer' ? customerView?.code : null}
+        />
 
         {/* Logout */}
         <div style={{ padding:'12px 10px', borderTop:'1px solid #1F2937' }}>
@@ -256,9 +262,12 @@ function Dashboard({ onLogout }) {
 
       {/* MAIN */}
       <main style={{ flex:1, padding:28, overflowY:'auto', animation:'fadeIn 0.3s ease' }}>
-        {currentTab && (
-          <TabContent tab={currentTab} customers={customers} loadingCust={loadingCust} updateTab={updateTab} />
-        )}
+        {view === 'customer' && customerView
+          ? <CustomerView customer={customerView} onBack={() => setView('task')} />
+          : currentTab && (
+              <TabContent tab={currentTab} customers={customers} loadingCust={loadingCust} updateTab={updateTab} />
+            )
+        }
       </main>
     </div>
   );
@@ -295,7 +304,7 @@ function TabButton({ tab, active, onClick }) {
     }}>
       <div style={{ display:'flex', alignItems:'center', gap:9 }}>
         {icon}
-        <span style={{ fontSize:13, fontWeight:600, color:active?'#F9FAFB':'#F9FAFB',
+        <span style={{ fontSize:13, fontWeight:600, color:active?'#F9FAFB':'#9CA3AF',
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>
           {tab.customer ? tab.customer.name : `Task ${tab.id}`}
         </span>
@@ -376,6 +385,68 @@ function CustomerSearch({ customers, selected, onSelect }) {
 }
 
 // ═══════════════════════════════════════════════════════
+// CUSTOMER VIEW
+// ═══════════════════════════════════════════════════════
+function CustomerView({ customer, onBack }) {
+  return (
+    <div style={{ maxWidth:600, animation:'fadeIn 0.3s ease' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:32 }}>
+        <button onClick={onBack} style={{
+          background:'#1F2937', border:'1px solid #374151', borderRadius:8,
+          color:'#D1D5DB', fontSize:13, fontWeight:600,
+          padding:'8px 14px', cursor:'pointer',
+        }}>← Back</button>
+        <div>
+          <h2 style={{
+            fontSize:26, fontWeight:800, fontFamily:"'Syne',sans-serif",
+            background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
+            WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+            letterSpacing:'-0.4px',
+          }}>{customer.name}</h2>
+          <p style={{ fontSize:13, color:'#9CA3AF', marginTop:3 }}>Code: {customer.code}</p>
+        </div>
+      </div>
+
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        {customer.sheetUrl && (
+          <a href={customer.sheetUrl} target="_blank" rel="noreferrer" style={{
+            display:'flex', alignItems:'center', gap:16,
+            padding:'22px 24px', borderRadius:16,
+            background:'#0D1117', border:'1px solid #1F2937',
+            textDecoration:'none',
+          }}
+          onMouseEnter={e => e.currentTarget.style.borderColor='#374151'}
+          onMouseLeave={e => e.currentTarget.style.borderColor='#1F2937'}
+          >
+            <span style={{ fontSize:32 }}>📊</span>
+            <div>
+              <div style={{ fontSize:17, fontWeight:700, color:'#F9FAFB', marginBottom:4 }}>Open Google Sheet</div>
+              <div style={{ fontSize:13, color:'#9CA3AF' }}>View and edit {customer.name} daily_tracking</div>
+            </div>
+          </a>
+        )}
+
+        <a href={`https://flashtrack.io/${customer.code}`} target="_blank" rel="noreferrer" style={{
+          display:'flex', alignItems:'center', gap:16,
+          padding:'22px 24px', borderRadius:16,
+          background:'#0D1117', border:'1px solid #1F2937',
+          textDecoration:'none',
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor='#374151'}
+        onMouseLeave={e => e.currentTarget.style.borderColor='#1F2937'}
+        >
+          <span style={{ fontSize:32 }}>🌐</span>
+          <div>
+            <div style={{ fontSize:17, fontWeight:700, color:'#F9FAFB', marginBottom:4 }}>Open Tracking Website</div>
+            <div style={{ fontSize:13, color:'#9CA3AF' }}>flashtrack.io/{customer.code}</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
 // TAB CONTENT
 // ═══════════════════════════════════════════════════════
 function TabContent({ tab, customers, loadingCust, updateTab }) {
@@ -445,7 +516,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
         <div>
           <h2 style={{
             fontSize:26, fontWeight:800, fontFamily:"'Syne',sans-serif",
-            background:'linear-gradient(135deg,#F9FAFB,#F9FAFB)',
+            background:'linear-gradient(135deg,#F9FAFB,#9CA3AF)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
             letterSpacing:'-0.4px',
           }}>Task {tab.id}</h2>
@@ -520,7 +591,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
             padding:'14px 18px', borderBottom:'1px solid #1F2937',
             display:'flex', justifyContent:'space-between', alignItems:'center',
           }}>
-            <span style={{ fontSize:13, color:'#F9FAFB', fontWeight:700, letterSpacing:'0.04em' }}>
+            <span style={{ fontSize:13, color:'#9CA3AF', fontWeight:700, letterSpacing:'0.04em' }}>
               {tab.rows.length} ROWS · {tab.customer?.name || '—'}
             </span>
             {isDone && <span style={{ fontSize:13, color:'#10B981', fontWeight:600 }}>✓ Ready to copy</span>}
@@ -571,7 +642,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
           background:'#0D1117', border:'1px solid #065F46',
           borderRadius:14, padding:18, display:'flex', flexDirection:'column', gap:10,
         }}>
-          <div style={{ fontSize:14, color:'#F9FAFB' }}>
+          <div style={{ fontSize:14, color:'#9CA3AF' }}>
             {tab.rows.filter(r=>r.name||r.trackingId).length} rows ready for <strong style={{ color:'#F9FAFB' }}>{tab.customer.name}</strong>
           </div>
 
@@ -592,7 +663,7 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
               style={{
                 display:'block', width:'100%', padding:'13px 20px',
                 background:'transparent', border:'1px solid #374151',
-                borderRadius:12, color:'#F9FAFB', fontSize:14, fontWeight:600,
+                borderRadius:12, color:'#9CA3AF', fontSize:14, fontWeight:600,
                 textDecoration:'none', textAlign:'center',
               }}
             >
@@ -638,8 +709,8 @@ function fileToBase64(file) {
   });
 }
 
-const labelStyle   = { fontSize:12, color:'#F9FAFB', fontWeight:700, letterSpacing:'0.06em' };
+const labelStyle   = { fontSize:12, color:'#9CA3AF', fontWeight:700, letterSpacing:'0.06em' };
 const inputStyle   = { width:'100%', marginTop:8, padding:'12px 14px', background:'#1F2937', border:'1px solid #374151', borderRadius:10, color:'#F9FAFB', fontSize:15 };
-const thStyle      = { padding:'11px 14px', textAlign:'left', fontSize:12, fontWeight:700, color:'#F9FAFB', letterSpacing:'0.06em', textTransform:'uppercase', borderBottom:'1px solid #1F2937' };
+const thStyle      = { padding:'11px 14px', textAlign:'left', fontSize:12, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.06em', textTransform:'uppercase', borderBottom:'1px solid #1F2937' };
 const tdStyle      = { padding:'4px 8px', verticalAlign:'middle' };
 const btnSecondary = { padding:'10px 16px', background:'#1F2937', color:'#D1D5DB', border:'1px solid #374151', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' };
