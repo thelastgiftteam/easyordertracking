@@ -1,4 +1,22 @@
-<section className="relative min-h-screen bg-black overflow-hidden">
+export default function Home() {
+  return (
+    <main className="bg-black text-white overflow-hidden">
+      <HeroSection />
+      <TrustSection />
+      <ProblemSection />
+      <SolutionSection />
+      <ResultsSection />
+      <FounderSection />
+      <PricingSection />
+      <FaqSection />
+      <FinalCtaSection />
+    </main>
+  );
+}
+
+function HeroSection() {
+  return (
+    <section className="relative min-h-screen bg-black overflow-hidden">
 
   {/* Background */}
   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#ff3b1f25,transparent_45%)]"></div>
@@ -155,3 +173,113 @@
   </div>
 
 </section>
+  );
+}
+
+function TrustSection() {
+  return (
+    <section className="bg-zinc-950 border-y border-zinc-800">
+
+  <div className="max-w-7xl mx-auto px-8 py-10">
+
+    <div className="grid md:grid-cols-4 gap-8 text-center">
+
+      <div>
+        <h3 className="text-red-500 text-4xl font-black">
+          24h
+        </h3>
+        <p className="text-zinc-400 mt-2">
+          Setup Time
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-yellow-400 text-4xl font-black">
+          ₹750
+        </h3>
+        <p className="text-zinc-400 mt-2">
+          Monthly Plan
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-red-500 text-4xl font-black">
+          ∞
+        </h3>
+        <p className="text-zinc-400 mt-2">
+          Unlimited Orders
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-yellow-400 text-4xl font-black">
+          0
+        </h3>
+        <p className="text-zinc-400 mt-2">
+          Technical Skills Needed
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+  );
+}
+
+function ProblemSection() {
+  return (
+    <section>
+      Problem Section Coming Here
+    </section>
+  );
+}
+
+function SolutionSection() {
+  return (
+    <section>
+      Solution Section Coming Here
+    </section>
+  );
+}
+
+function ResultsSection() {
+  return (
+    <section>
+      Results Section Coming Here
+    </section>
+  );
+}
+
+function FounderSection() {
+  return (
+    <section>
+      Founder Story Coming Here
+    </section>
+  );
+}
+
+function PricingSection() {
+  return (
+    <section>
+      Pricing Coming Here
+    </section>
+  );
+}
+
+function FaqSection() {
+  return (
+    <section>
+      FAQ Coming Here
+    </section>
+  );
+}
+
+function FinalCtaSection() {
+  return (
+    <section>
+      Final CTA Coming Here
+    </section>
+  );
+}
