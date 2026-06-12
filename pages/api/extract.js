@@ -26,17 +26,73 @@ export default async function handler(req, res) {
   const { image, mimeType } = req.body;
   if (!image) return res.status(400).json({ error: 'No image provided' });
 
-  const prompt = `You are analyzing an Indian courier/shipping tracking slip image.
+  const prompt = `You are an OCR data extraction engine for Indian courier, postal, logistics, and shipping documents.
 
-Extract exactly these three fields:
-- "name": The recipient's full name (remove titles like Mr/Mrs/Dr)
-- "pincode": The 6-digit Indian PIN code of the delivery address
-- "trackingId": The tracking / AWB / consignment number (alphanumeric, often starts with letters)
+Your task is to identify and extract:
 
-Rules:
-- Return valid JSON only with keys: name, pincode, trackingId
-- If a field is not clearly visible, return an empty string ""
-- Do not include any explanation or extra text`;
+1. Recipient Name
+2. Delivery PIN Code
+3. Tracking Number
+
+The document may belong to ANY courier or postal service including:
+India Post, DTDC, Delhivery, Blue Dart, XpressBees, Ecom Express, Professional Couriers, ST Courier, Amazon Shipping, Shadowfax, Ekart, etc.
+
+Extraction Rules:
+
+RECIPIENT NAME:
+- Find the consignee, receiver, recipient, delivery contact, receiver details, ship-to person, or delivery addressee.
+- Return only the person's name.
+- Remove titles such as Mr, Mrs, Ms, Dr.
+- Do not return company names unless no person name exists.
+
+PINCODE:
+- Extract the destination/delivery 6-digit Indian PIN code.
+- Prefer the receiver's address PIN code.
+- Ignore sender PIN codes.
+
+TRACKING ID:
+- Extract the shipment tracking number.
+- Look for labels such as:
+  - Tracking Number
+  - Tracking ID
+  - Consignment Number
+  - AWB Number
+  - Waybill Number
+  - Article Number
+  - Shipment Number
+  - Reference Number
+- Return the primary shipment identifier.
+
+MULTIPLE SHIPMENTS:
+- If multiple shipments are present:
+  - Return an array of objects.
+  - Create one object for each shipment row/label.
+  - Match recipient name, destination PIN code, and tracking number from the same shipment.
+
+OUTPUT FORMAT:
+
+Single shipment:
+{
+  "name": "",
+  "pincode": "",
+  "trackingId": ""
+}
+
+Multiple shipments:
+[
+  {
+    "name": "",
+    "pincode": "",
+    "trackingId": ""
+  }
+]
+
+Important:
+- Return JSON only.
+- No markdown.
+- No explanations.
+- No extra keys.
+- If a value is not visible, use "".`;
 
   // Try endpoints in order — first working one wins
   const ENDPOINTS = [
