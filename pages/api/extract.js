@@ -39,7 +39,10 @@ Rules:
 - If multiple shipments are present, return an array with one object per shipment.
 - Match name, pincode, and trackingId from the same shipment row/label.
 - If a value is unclear, return "".
-
+- For India Post / Speed Post slips: the tracking number is labeled "Article No." or "Article Number" and follows the format XX999999999IN (2 letters + 9 digits + IN). It is usually printed above or below a barcode.
+- For pincode: look inside the full "To" address block — it is the 6-digit number, often after the city name like "Ernakulam - 682006".
+- If the image contains a barcode, the alphanumeric string printed directly below or beside it is the tracking number.
+- Ignore any sender/from details entirely.
 Return JSON only.
 
 Single shipment:
