@@ -488,13 +488,23 @@ function TabContent({ tab, customers, loadingCust, updateTab }) {
           body: JSON.stringify({ image:base64, mimeType:files[i].type }),
         });
         const data = await res.json();
-        extracted.push({
-          id: Date.now()+i,
-          name:       data.result?.name       || '',
-          pincode:    data.result?.pincode    || '',
-          trackingId: data.result?.trackingId || '',
-          error:      data.success ? '' : (data.error || 'Failed'),
-        });
+if (data.success && Array.isArray(data.results) && data.results.length > 0) {
+  data.results.forEach((r, j) => {
+    extracted.push({
+      id: Date.now() + i * 1000 + j,
+      name:       r.name       || '',
+      pincode:    r.pincode    || '',
+      trackingId: r.trackingId || '',
+      error:      '',
+    });
+  });
+} else {
+  extracted.push({
+    id: Date.now()+i,
+    name:'', pincode:'', trackingId:'',
+    error: data.error || 'Could not extract data from this image',
+  });
+}
       } catch (err) {
         extracted.push({ id:Date.now()+i, name:'', pincode:'', trackingId:'', error:err.message });
       }
